@@ -26,7 +26,7 @@ local Upper_Half = Region(0, 0, screen.x, screen.y/2)
 local Upper_Right = Region(screen.x/2, 0, screen.x/2, screen.y/2)
 local Upper_Left = Region(0, 0, screen.x/2, screen.y/2)
 local Lower_Half = Region(0, screen.y/2, screen.x, screen.y/2)
-local Lower_Right = Region(screen.x/2, screen.y/2, screen.x, screen.y/2)
+local Lower_Right = Region(screen.x/2, screen.y/2, screen.x/2, screen.y/2)
 local Lower_Left = Region(0, screen.y/2, screen.x/2, screen.y/2)
 local Lower_Most_Half = Region(0, screen.y - screen.y/14, screen.x, screen.y/14)
 local Agnes_Region = Region(0, math.floor(screen.y * 0.08), math.floor(screen.x * 0.30), math.floor(screen.y * 0.42))
@@ -2133,11 +2133,11 @@ function SingleImageWait(target, waitTime, boxRegion, Similarity, Color, Mask)
 end
 
 function SearchImageNew(target, boxRegion, maxScore, Color, Mask, Time)
-	if (target.target) then boxRegion, maxScore, Color, Mask, Time, target = target.region, target.score, target.color, target.mask, target.ttime, target.target end
-	Time, Color, Mask, maxScore = Time or 0, Color or false, Mask or false, maxScore or 0.9
-	local TImage = target
-	if not (typeOf(target) == "table") then TImage = {target} end
-	local result = {x = nil, y = nil, xy = nil, name = nil, score=maxScore}
+        if (target.target) then boxRegion, maxScore, Color, Mask, Time, target = target.region, target.score, target.color, target.mask, target.ttime, target.target end
+        Time, Color, Mask, maxScore = Time or 0, Color or false, Mask or false, maxScore or 0.9
+        local TImage = target
+        if not (typeOf(target) == "table") then TImage = {target} end
+        local result = {x = nil, y = nil, xy = nil, name = nil, score=maxScore}
 	local Search_Timer = Timer()
 	repeat
 		for i, t in ipairs(TImage) do
@@ -2164,11 +2164,21 @@ function SearchImageNew(target, boxRegion, maxScore, Color, Mask, Time)
     return result
 end
 
+function tapSearchResult(result, clickType)
+        if not result then return false end
+        local target = result.xy or result.loc
+        if target then
+                Press(target, clickType)
+                return true
+        end
+        return false
+end
+
 function ClickImg(image, region, score, color, mask, waitTime)
-	score = score or 0.9
-	local searchResult = SearchImageNew(image, region, score, color, mask, waitTime)
-	if (searchResult and searchResult.xy) then
-		Press(searchResult.xy, 1)
+        score = score or 0.9
+        local searchResult = SearchImageNew(image, region, score, color, mask, waitTime)
+        if (searchResult and searchResult.xy) then
+                Press(searchResult.xy, 1)
 		return true, searchResult
 	end
 	return false, searchResult
@@ -5863,20 +5873,19 @@ function Dawn_Academy()
 		-- Search for bag with lower threshold and longer timeout
 		local bag = SearchImageNew("trek/bag.png", Upper_Right, 0.85, true, false, 3)
 		
-		if bag and bag.xy then
-			Logger(string.format("Bag found at x=%d, y=%d", bag.xy:getX(), bag.xy:getY()))
-			if bag.r then 
-				bag.r:highlight(1)
-				Logger(string.format("Highlighting bag region: x=%d, y=%d, w=%d, h=%d", 
-					bag.r:getX(), bag.r:getY(), bag.r:getW(), bag.r:getH()))
-			end
-			
-			-- Try clicking with click() instead of Press()
-			Logger("Clicking bag...")
-			click(bag.xy)
-			wait(0.8)  -- Increased wait time for panel to appear
-			
-			if bag.r then bag.r:highlightOff() end
+                if bag and bag.xy then
+                        Logger(string.format("Bag found at x=%d, y=%d", bag.xy:getX(), bag.xy:getY()))
+                        if bag.r then
+                                bag.r:highlight(1)
+                                Logger(string.format("Highlighting bag region: x=%d, y=%d, w=%d, h=%d",
+                                        bag.r:getX(), bag.r:getY(), bag.r:getW(), bag.r:getH()))
+                        end
+
+                        Logger("Tapping bag via Press helper...")
+                        tapSearchResult(bag, 1)
+                        wait(0.8)  -- Increased wait time for panel to appear
+
+                        if bag.r then bag.r:highlightOff() end
 		else
 			Logger(string.format("Bag icon not found (attempt %d)", attempt))
 			-- Try alternative: tap a fixed location in upper right if bag not found
@@ -5912,29 +5921,29 @@ function Dawn_Academy()
 	if not (claimBtn and claimBtn.xy) then
 		claimBtn = SearchImageNew("trek/claimtrek.png", Upper_Half, 0.8, true, false, 2)
 	end
-	if claimBtn and claimBtn.xy then
-		Logger("Claim button found, clicking...")
-		if claimBtn.r then claimBtn.r:highlight(0.8) end
-		click(claimBtn.xy)
-		wait(0.8)
-		if claimBtn.r then claimBtn.r:highlightOff() end
-		updateDawnAcademyLastClaim(os.time())
-		Logger("Trek claim collected")
-		claimed = true
+        if claimBtn and claimBtn.xy then
+                Logger("Claim button found, tapping...")
+                if claimBtn.r then claimBtn.r:highlight(0.8) end
+                tapSearchResult(claimBtn, 1)
+                wait(0.8)
+                if claimBtn.r then claimBtn.r:highlightOff() end
+                updateDawnAcademyLastClaim(os.time())
+                Logger("Trek claim collected")
+                claimed = true
 	else
 		Logger("No claim button, looking for close...")
 		local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.8, true, false, 2)
 		if not (closeBtn and closeBtn.xy) then
 			closeBtn = SearchImageNew("trek/tap.png", Lower_Half, 0.8, true, false, 2)
 		end
-		if closeBtn and closeBtn.xy then
-			if closeBtn.r then closeBtn.r:highlight(0.8) end
-			click(closeBtn.xy)
-			wait(0.5)
-			if closeBtn.r then closeBtn.r:highlightOff() end
-			Logger("Closed trek panel (claim unavailable)")
-		else
-			Logger("Close/tap button missing; aborting Dawn Academy")
+                if closeBtn and closeBtn.xy then
+                        if closeBtn.r then closeBtn.r:highlight(0.8) end
+                        tapSearchResult(closeBtn, 1)
+                        wait(0.5)
+                        if closeBtn.r then closeBtn.r:highlightOff() end
+                        Logger("Closed trek panel (claim unavailable)")
+                else
+                        Logger("Close/tap button missing; aborting Dawn Academy")
 			return false, false
 		end
 	end
@@ -5942,14 +5951,14 @@ function Dawn_Academy()
 	wait(0.5)
 	Logger("Return to city")
 	local backBtn = SearchImageNew("trek/back.png", Upper_Left, 0.9, true, false, 3)
-	if backBtn and backBtn.xy then
-		if backBtn.r then backBtn.r:highlight(0.8) end
-		click(backBtn.xy)
-		wait(0.5)
-		if backBtn.r then backBtn.r:highlightOff() end
-	else
-		Logger("Back button not found; using Go_Back")
-		Go_Back("Dawn Academy back fallback")
+        if backBtn and backBtn.xy then
+                if backBtn.r then backBtn.r:highlight(0.8) end
+                tapSearchResult(backBtn, 1)
+                wait(0.5)
+                if backBtn.r then backBtn.r:highlightOff() end
+        else
+                Logger("Back button not found; using Go_Back")
+                Go_Back("Dawn Academy back fallback")
 	end
 
 	return true, claimed
