@@ -1252,8 +1252,14 @@ function Logger(message)
     end
 
     if (Enable_Label) then
-        if message then Label_Region:highlightUpdate(message)
-        else Label_Region:highlightOff() end
+        if not Label_Region then
+            local regionWidth = (screen and screen.x) or 720
+            Label_Region = Region(0, 89, regionWidth, 40)
+        end
+        if Label_Region then
+            if message then Label_Region:highlightUpdate(message)
+            else Label_Region:highlightOff() end
+        end
     end
 end
 
