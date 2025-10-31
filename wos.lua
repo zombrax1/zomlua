@@ -2822,11 +2822,40 @@ function MagnifyerSearch(Required)
 end
 
 local function normalizeFlag(v)
-        if v == nil then return "0" end
-        if type(v) == "number" then
-                return tostring(math.max(0, math.min(8, v)))
+        if v == nil then
+                return "0"
         end
-        return v
+
+        local valueType = type(v)
+        if valueType == "number" then
+                local n = math.floor(v)
+                if n < 0 then n = 0 end
+                if n >= 1 and n <= 9 then
+                        return tostring(n - 1)
+                end
+                if n > 9 then
+                        return "8"
+                end
+                return tostring(n)
+        elseif valueType == "string" then
+                local trimmed = v:match("^%s*(.-)%s*$") or ""
+                local numeric = tonumber(trimmed)
+                if numeric then
+                        numeric = math.floor(numeric)
+                        if numeric >= 0 and numeric <= 8 then
+                                return tostring(numeric)
+                        end
+                        if numeric >= 1 and numeric <= 9 then
+                                return tostring(numeric - 1)
+                        end
+                end
+                local digit = trimmed:match("([0-8])")
+                if digit then
+                        return digit
+                end
+        end
+
+        return "0"
 end
 
 function Auto_Beast_Search(Search)
@@ -2870,8 +2899,9 @@ function Auto_Beast_Search(Search)
 			return 300
 		else Deploy_Btn = Attack_Status
 		end
-                local _flagReq = normalizeFlag(Flag_Req)
-                Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+                local rawFlagReq = Flag_Req
+                local _flagReq = normalizeFlag(rawFlagReq)
+                Logger(string.format("AutoAttack: using Flag_Req=%s (raw=%s)", tostring(_flagReq), tostring(rawFlagReq)))
                 return Auto_Beast(Deploy_Btn, Attack_Type, _flagReq, Use_Hero, true)
 	else
 		Logger("Searching for Polar Terror")
@@ -5038,8 +5068,9 @@ function rallyStarter(Rally, useCounter)
 		Go_Back("March Queue limit sleeping for 300 seconds")
 		return 300
 	end
-        local _flagReq = normalizeFlag(Flag_Req)
-        Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+        local rawFlagReq = Flag_Req
+        local _flagReq = normalizeFlag(rawFlagReq)
+        Logger(string.format("AutoAttack: using Flag_Req=%s (raw=%s)", tostring(_flagReq), tostring(rawFlagReq)))
         return Auto_Beast(Deploy_Btn, Attack_Type, _flagReq, Use_Hero, useCounter)
 end
 
@@ -5567,8 +5598,9 @@ function Search_Intel()
             Logger("Setting up attack for Beast")
             local Original_Attack_Type = Attack_Type
             Attack_Type = "Beasts"
-            local _flagReq = normalizeFlag(Flag_Req)
-            Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+            local rawFlagReq = Flag_Req
+            local _flagReq = normalizeFlag(rawFlagReq)
+            Logger(string.format("AutoAttack: using Flag_Req=%s (raw=%s)", tostring(_flagReq), tostring(rawFlagReq)))
             total_Seconds = Auto_Beast(Attack_Status, Attack_Type, _flagReq, Use_Hero, false)
             Attack_Type = Original_Attack_Type
             Logger("Attack in progress")
@@ -8422,8 +8454,9 @@ function heroMission()
 					local Original_Attack_Type, Original_AutoStop_Attack, Original_Solo_troop = Attack_Type, AutoStop_Attack, Solo_troop
 					Attack_Type, AutoStop_Attack, Solo_troop = "Polar Terror", false, false
 					Logger("Starting Auto_Beast")
-                                        local _flagReq = normalizeFlag(Flag_Req)
-                                        Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+                                        local rawFlagReq = Flag_Req
+                                        local _flagReq = normalizeFlag(rawFlagReq)
+                                        Logger(string.format("AutoAttack: using Flag_Req=%s (raw=%s)", tostring(_flagReq), tostring(rawFlagReq)))
                                         total_Seconds = Auto_Beast(Deploy_Btn, Attack_Type, _flagReq, Use_Hero, false)
 					Logger("Going back to original Settings")
 					Attack_Type, AutoStop_Attack, Solo_troop = Original_Attack_Type, Original_AutoStop_Attack, Original_Solo_troop
@@ -8516,8 +8549,9 @@ function mercPrestige()
 			Deploy_Btn = PressRepeatNew(mercDir.. "Rally.png", {"Deploy.png", "March Queue Limit.png"}, 1, 2, nil, nil, 0.8, true)
 			marchType, flagType = "Reaper", deploySettings.flag 
 		end
-                local _flagReq = normalizeFlag(flagType)
-                Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+                local rawFlagReq = flagType
+                local _flagReq = normalizeFlag(rawFlagReq)
+                Logger(string.format("AutoAttack: using Flag_Req=%s (raw=%s)", tostring(_flagReq), tostring(rawFlagReq)))
                 return Auto_Beast(Deploy_Btn, marchType, _flagReq, false)
         end
 end
