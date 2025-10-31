@@ -2828,28 +2828,19 @@ local function normalizeFlag(v)
 
         local valueType = type(v)
         if valueType == "number" then
-                local n = math.floor(v)
-                if n < 0 then n = 0 end
-                if n >= 1 and n <= 9 then
-                        return tostring(n - 1)
-                end
-                if n > 9 then
-                        return "8"
-                end
-                return tostring(n)
+                local clamped = math.max(0, math.min(8, math.floor(v)))
+                return tostring(clamped)
         elseif valueType == "string" then
                 local trimmed = v:match("^%s*(.-)%s*$") or ""
+                if trimmed == "" then
+                        return "0"
+                end
                 local numeric = tonumber(trimmed)
                 if numeric then
-                        numeric = math.floor(numeric)
-                        if numeric >= 0 and numeric <= 8 then
-                                return tostring(numeric)
-                        end
-                        if numeric >= 1 and numeric <= 9 then
-                                return tostring(numeric - 1)
-                        end
+                        local clamped = math.max(0, math.min(8, math.floor(numeric)))
+                        return tostring(clamped)
                 end
-                local digit = trimmed:match("([0-8])")
+                local digit = trimmed:match("^[0-8]$")
                 if digit then
                         return digit
                 end
