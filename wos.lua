@@ -2985,20 +2985,26 @@ function Auto_Beast(Deploy_Btn, attackType, flagReq, useHero, useCounter)
                 local roiH = math.floor(screen.y * 0.25)
                 local flagROI = Region(0, roiY, screen.x, roiH)
 
-                local Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", requestedFlag), flagROI, 0.85, true, false, 3)
+                local flagImage = string.format("Flags/Flag%s.png", requestedFlag)
+                local Troop_Flag = SearchImageNew(flagImage, flagROI, 0.85, true, false, 3)
                 if not (Troop_Flag and Troop_Flag.xy) then
                         Logger("Auto_Beast: flag not in primary ROI; scanning full screen")
                         Get_Flags_Coordinates()
-                        Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", requestedFlag), nil, 0.85, true, false, 3)
+                        Troop_Flag = SearchImageNew(flagImage, nil, 0.85, true, false, 3)
+                end
+                if not (Troop_Flag and Troop_Flag.xy) then
+                        Logger("Auto_Beast: falling back to legacy flag scan")
+                        Troop_Flag = SearchImageNew(flagImage, Upper_Half, 0.9, true, false, 9999999)
                 end
 
                 if Troop_Flag and Troop_Flag.xy then
-                        if Troop_Flag.r and Troop_Flag.r.highlight then Troop_Flag.r:highlight(1) end
-                        click(Troop_Flag.xy)
-                        wait(0.2)
-                        click(Troop_Flag.xy)
-                        wait(0.2)
-                        if Troop_Flag.r and Troop_Flag.r.highlightOff then Troop_Flag.r:highlightOff() end
+                        local confirmationRegion
+                        if Troop_Flag.r then
+                                confirmationRegion = Troop_Flag.r
+                        else
+                                confirmationRegion = Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46)
+                        end
+                        PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, confirmationRegion, 0.9, false, true)
                         Logger(string.format("Auto_Beast: flag %s tapped", requestedFlag))
                 else
                         Logger(string.format("Auto_Beast: requested flag %s NOT found; leaving current flag unchanged", requestedFlag))
