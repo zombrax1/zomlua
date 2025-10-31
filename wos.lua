@@ -2822,31 +2822,13 @@ function MagnifyerSearch(Required)
 end
 
 local function normalizeFlag(v)
-        if v == nil then
-                return "0"
-        end
-
-        local valueType = type(v)
-        if valueType == "number" then
-                local clamped = math.max(0, math.min(8, math.floor(v)))
-                return tostring(clamped)
-        elseif valueType == "string" then
-                local trimmed = v:match("^%s*(.-)%s*$") or ""
-                if trimmed == "" then
-                        return "0"
-                end
-                local numeric = tonumber(trimmed)
-                if numeric then
-                        local clamped = math.max(0, math.min(8, math.floor(numeric)))
-                        return tostring(clamped)
-                end
-                local digit = trimmed:match("^[0-8]$")
-                if digit then
-                        return digit
-                end
-        end
-
-        return "0"
+	if v == nil then return "0" end
+	v = tostring(v)
+	local digits = v:match("(%d+)")
+	local n = tonumber(digits or "0") or 0
+	if n < 0 then n = 0 end
+	if n > 8 then n = 8 end
+	return tostring(n)
 end
 
 function Auto_Beast_Search(Search)
@@ -2977,41 +2959,38 @@ function Auto_Beast(Deploy_Btn, attackType, flagReq, useHero, useCounter)
 		end
 	end
 
-        if flagReq and tostring(flagReq) ~= "0" then
-                local requestedFlag = tostring(flagReq)
-                Logger("Auto_Beast: selecting flag " .. requestedFlag)
+	flagReq = normalizeFlag(flagReq)
+	if flagReq and flagReq ~= "0" then
+		Logger(string.format("Auto_Beast: selecting flag=%s", flagReq))
 
-                local roiY = math.floor(screen.y * 0.55)
-                local roiH = math.floor(screen.y * 0.25)
-                local flagROI = Region(0, roiY, screen.x, roiH)
+		local roiY = math.floor(screen.y * 0.55)
+		local roiH = math.floor(screen.y * 0.25)
+		local flagROI = Region(0, roiY, screen.x, roiH)
 
-                local flagImage = string.format("Flags/Flag%s.png", requestedFlag)
-                local Troop_Flag = SearchImageNew(flagImage, flagROI, 0.85, true, false, 3)
-                if not (Troop_Flag and Troop_Flag.xy) then
-                        Logger("Auto_Beast: flag not in primary ROI; scanning full screen")
-                        Get_Flags_Coordinates()
-                        Troop_Flag = SearchImageNew(flagImage, nil, 0.85, true, false, 3)
-                end
-                if not (Troop_Flag and Troop_Flag.xy) then
-                        Logger("Auto_Beast: falling back to legacy flag scan")
-                        Troop_Flag = SearchImageNew(flagImage, Upper_Half, 0.9, true, false, 9999999)
-                end
+		local flagImage = string.format("Flags/Flag%s.png", flagReq)
+		local Troop_Flag = SearchImageNew(flagImage, flagROI, 0.85, true, false, 3)
+		if not (Troop_Flag and Troop_Flag.xy) then
+			Logger("Auto_Beast: flag not in primary ROI; expanding search")
+			Get_Flags_Coordinates()
+			Troop_Flag = SearchImageNew(flagImage, nil, 0.85, true, false, 3)
+		end
 
-                if Troop_Flag and Troop_Flag.xy then
-                        local confirmationRegion
-                        if Troop_Flag.r then
-                                confirmationRegion = Troop_Flag.r
-                        else
-                                confirmationRegion = Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46)
-                        end
-                        PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, confirmationRegion, 0.9, false, true)
-                        Logger(string.format("Auto_Beast: flag %s tapped", requestedFlag))
-                else
-                        Logger(string.format("Auto_Beast: requested flag %s NOT found; leaving current flag unchanged", requestedFlag))
-                end
-        else
-                Logger("Auto_Beast: flagReq is nil or '0' (no preference) — leaving current flag unchanged")
-        end
+		if Troop_Flag and Troop_Flag.xy then
+			local confirmationRegion
+			if Troop_Flag.r then
+				confirmationRegion = Troop_Flag.r
+			else
+				confirmationRegion = Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46)
+			end
+			PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, confirmationRegion, 0.9, false, true)
+			Logger(string.format("Auto_Beast: flag %s tapped", flagReq))
+		else
+			Logger(string.format("Auto_Beast: requested flag %s NOT found; leaving current flag unchanged", flagReq))
+		end
+	else
+		Logger("Auto_Beast: flagReq is '0'/nil (no preference) — leaving current flag unchanged")
+	end
+
 
         local total_Seconds = Get_March_Time()
 	if (Solo_troop) and (attackType == "Polar Terror") then
