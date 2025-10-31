@@ -530,7 +530,8 @@ function Intel_Options_GUI()
 	--addCheckBox("flameFangs", "Flame and Fangs", false)
 	newRow()
 	addCheckBox("Enable_Auto_Attack", "Enable Auto Attack", false)
-	dialogShowFullScreen("Intel Options")
+        dialogShowFullScreen("Intel Options")
+        Logger("Post-GUI Flag_Req=" .. tostring(Flag_Req))
 end
 
 function Maps_Options_GUI()
@@ -605,7 +606,7 @@ function AutoAttack_GUI()
 		addSpinnerIndex("Polar_Req_Lv", {"1", "2", "3", "4", "5", "6", "7", "8"}, 8)
 	end
 	addTextView("Flag")
-	addSpinner("Flag_Req", {"0", "1", "2", "3", "4", "5", "6", "7", "8"}, 1)
+        addSpinner("Flag_Req", {"0", "1", "2", "3", "4", "5", "6", "7", "8"}, "0")
 	addCheckBox("Use_Hero", "Use Hero", false)
 	addSpinner("Hero_Type", {"Gina", "Bokan", "Both"}, 1)
 	newRow()
@@ -640,8 +641,9 @@ function AutoAttack_GUI()
 		newRow()
 		addCheckBox("Auto_Hero_Mission", "Hero Mission", false) --check events on reset, read OCR from 0 - 10, attack remaining mission using backpack?, check hero mission tab to claim rewards.
 	end	
-	dialogShowFullScreen("Auto Attack Options")
-	if (resetAttackLimit) then 
+        dialogShowFullScreen("Auto Attack Options")
+        Logger("Post-GUI Flag_Req=" .. tostring(Flag_Req))
+        if (resetAttackLimit) then
 		preferencePutNumber("attackLimitCounter", 0)
 		preferencePutBoolean("resetAttackLimit", false)
 	end
@@ -2813,8 +2815,16 @@ function MagnifyerSearch(Required)
 	PressRepeatNew(Required_Result.xy, string.format("%sFrame.png", Magnifyer_Folder, Required), 1, 2, nil, Frame_Region, 0.95, false, true, false, true)
 end
 
+local function normalizeFlag(v)
+        if v == nil then return "0" end
+        if type(v) == "number" then
+                return tostring(math.max(0, math.min(8, v)))
+        end
+        return v
+end
+
 function Auto_Beast_Search(Search)
-	Logger("Starting Attack on " ..Attack_Type)
+        Logger("Starting Attack on " ..Attack_Type)
 	local Screen_Status, Cur_Lv, OCR_Status
 	------- Magnifyer Search ----------------
 	MagnifyerSearch(Attack_Type)
@@ -2854,7 +2864,9 @@ function Auto_Beast_Search(Search)
 			return 300
 		else Deploy_Btn = Attack_Status
 		end
-		return Auto_Beast(Deploy_Btn, Attack_Type, Flag_Req, Use_Hero, true)
+                local _flagReq = normalizeFlag(Flag_Req)
+                Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+                return Auto_Beast(Deploy_Btn, Attack_Type, _flagReq, Use_Hero, true)
 	else
 		Logger("Searching for Polar Terror")
 		local Rally = PressRepeatNew(Search.xy, "Rally.png", 1, 5, Lower_Half, nil, 0.8, true, true)
@@ -2938,29 +2950,37 @@ function Auto_Beast(Deploy_Btn, attackType, flagReq, useHero, useCounter)
 		end
 	end
 
-	if flagReq ~= "0" then
-		Logger(string.format("Selecting Flag %s", flagReq))
-		local flagROI = Region(0, math.floor(screen.y * 0.55), screen.x, math.floor(screen.y * 0.25))
-		local Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), flagROI, 0.85, true, false, 3)
-		if not (Troop_Flag and Troop_Flag.xy) then
-			Logger("Flag not found in primary ROI; recalculating coordinates")
-			Get_Flags_Coordinates()
-			Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), nil, 0.85, true, false, 3)
-		end
-		if Troop_Flag and Troop_Flag.xy then
-			if Troop_Flag.r and Troop_Flag.r.highlight then Troop_Flag.r:highlight(1) end
-			click(Troop_Flag.xy)
-			wait(0.2)
-			click(Troop_Flag.xy)
-			wait(0.2)
-			if Troop_Flag.r and Troop_Flag.r.highlightOff then Troop_Flag.r:highlightOff() end
-			Logger(string.format("Flag %s tapped", flagReq))
-		else
-			Logger(string.format("Requested flag %s could not be located; leaving flag unchanged", flagReq))
-		end
-	end
-	
-	local total_Seconds = Get_March_Time()
+        if flagReq and tostring(flagReq) ~= "0" then
+                local requestedFlag = tostring(flagReq)
+                Logger("Auto_Beast: selecting flag " .. requestedFlag)
+
+                local roiY = math.floor(screen.y * 0.55)
+                local roiH = math.floor(screen.y * 0.25)
+                local flagROI = Region(0, roiY, screen.x, roiH)
+
+                local Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", requestedFlag), flagROI, 0.85, true, false, 3)
+                if not (Troop_Flag and Troop_Flag.xy) then
+                        Logger("Auto_Beast: flag not in primary ROI; scanning full screen")
+                        Get_Flags_Coordinates()
+                        Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", requestedFlag), nil, 0.85, true, false, 3)
+                end
+
+                if Troop_Flag and Troop_Flag.xy then
+                        if Troop_Flag.r and Troop_Flag.r.highlight then Troop_Flag.r:highlight(1) end
+                        click(Troop_Flag.xy)
+                        wait(0.2)
+                        click(Troop_Flag.xy)
+                        wait(0.2)
+                        if Troop_Flag.r and Troop_Flag.r.highlightOff then Troop_Flag.r:highlightOff() end
+                        Logger(string.format("Auto_Beast: flag %s tapped", requestedFlag))
+                else
+                        Logger(string.format("Auto_Beast: requested flag %s NOT found; leaving current flag unchanged", requestedFlag))
+                end
+        else
+                Logger("Auto_Beast: flagReq is nil or '0' (no preference) — leaving current flag unchanged")
+        end
+
+        local total_Seconds = Get_March_Time()
 	if (Solo_troop) and (attackType == "Polar Terror") then
 		PressRepeatNew("Withdraw All.png", "Zero Troops ON.png", 1, 2, Lower_Half, Lower_Half, 0.9, true, true)
 		PressRepeatNew("Troop Plus.png", "Zero Troops OFF.png", 1, 2, Upper_Half, Lower_Half, 0.9, true, true)
@@ -5012,7 +5032,9 @@ function rallyStarter(Rally, useCounter)
 		Go_Back("March Queue limit sleeping for 300 seconds")
 		return 300
 	end
-	return Auto_Beast(Deploy_Btn, Attack_Type, Flag_Req, Use_Hero, useCounter)
+        local _flagReq = normalizeFlag(Flag_Req)
+        Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+        return Auto_Beast(Deploy_Btn, Attack_Type, _flagReq, Use_Hero, useCounter)
 end
 
 function checkStamina(Number, flowType) -- returns seconds
@@ -5539,7 +5561,9 @@ function Search_Intel()
             Logger("Setting up attack for Beast")
             local Original_Attack_Type = Attack_Type
             Attack_Type = "Beasts"
-            total_Seconds = Auto_Beast(Attack_Status, Attack_Type, Flag_Req, Use_Hero, false)
+            local _flagReq = normalizeFlag(Flag_Req)
+            Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+            total_Seconds = Auto_Beast(Attack_Status, Attack_Type, _flagReq, Use_Hero, false)
             Attack_Type = Original_Attack_Type
             Logger("Attack in progress")
             return total_Seconds
@@ -8392,7 +8416,9 @@ function heroMission()
 					local Original_Attack_Type, Original_AutoStop_Attack, Original_Solo_troop = Attack_Type, AutoStop_Attack, Solo_troop
 					Attack_Type, AutoStop_Attack, Solo_troop = "Polar Terror", false, false
 					Logger("Starting Auto_Beast")
-					total_Seconds = Auto_Beast(Deploy_Btn, Attack_Type, Flag_Req, Use_Hero, false)
+                                        local _flagReq = normalizeFlag(Flag_Req)
+                                        Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+                                        total_Seconds = Auto_Beast(Deploy_Btn, Attack_Type, _flagReq, Use_Hero, false)
 					Logger("Going back to original Settings")
 					Attack_Type, AutoStop_Attack, Solo_troop = Original_Attack_Type, Original_AutoStop_Attack, Original_Solo_troop
 					if not(total_Seconds == 1500) then
@@ -8484,8 +8510,10 @@ function mercPrestige()
 			Deploy_Btn = PressRepeatNew(mercDir.. "Rally.png", {"Deploy.png", "March Queue Limit.png"}, 1, 2, nil, nil, 0.8, true)
 			marchType, flagType = "Reaper", deploySettings.flag 
 		end
-		return Auto_Beast(Deploy_Btn, marchType, flagType, false)
-	end
+                local _flagReq = normalizeFlag(flagType)
+                Logger("AutoAttack: using Flag_Req=" .. tostring(_flagReq))
+                return Auto_Beast(Deploy_Btn, marchType, _flagReq, false)
+        end
 end
 
 function eventsChecker() --add more events
