@@ -5855,113 +5855,36 @@ function expert(button, opts)
 end
 -------------------------------Dawn Academy Claim--------------------------------------------------
 function Dawn_Academy()
-	Logger("Go To Dawn Academy")
-	ClickImg("Side Closed.png", Upper_Left, nil)
-	swipe(Location(6, 845), Location(6, 10), 0.5)
-	wait(0.3)
-	swipe(Location(6, 845), Location(6, 10), 0.5)
-	wait(0.2)
-	Logger("Click On Trek")
-	ClickImg("trek/trek.png", nil, nil)
-	wait(0.8)  -- Increased wait time for trek screen to load
-
-	Logger("Tap Trek bag until panel appears")
-	local bagOpened = false
-	for attempt = 1, 6 do
-		Logger(string.format("Bag search attempt %d", attempt))
-		
-		-- Search for bag with lower threshold and longer timeout
-		local bag = SearchImageNew("trek/bag.png", Upper_Right, 0.85, true, false, 3)
-		
-                if bag and bag.xy then
-                        Logger(string.format("Bag found at x=%d, y=%d", bag.xy:getX(), bag.xy:getY()))
-                        if bag.r then
-                                bag.r:highlight(1)
-                                Logger(string.format("Highlighting bag region: x=%d, y=%d, w=%d, h=%d",
-                                        bag.r:getX(), bag.r:getY(), bag.r:getW(), bag.r:getH()))
-                        end
-
-                        Logger("Tapping bag via Press helper...")
-                        tapSearchResult(bag, 1)
-                        wait(0.8)  -- Increased wait time for panel to appear
-
-                        if bag.r then bag.r:highlightOff() end
-		else
-			Logger(string.format("Bag icon not found (attempt %d)", attempt))
-			-- Try alternative: tap a fixed location in upper right if bag not found
-			if attempt >= 3 then
-				Logger("Trying fallback tap in upper-right corner")
-				local fallbackLoc = Location(680, 80)  -- Adjust coordinates based on your screen
-				click(fallbackLoc)
-				wait(0.8)
-			end
-		end
-
-		-- Check if panel opened
-		wait(0.3)
-		local panelIndicator = SearchImageNew({"trek/claimtrek.png", "trek/claimtrek1.png", "trek/bar.png", "trek/tap.png", "trek/close.png"}, nil, 0.8, true, false, 2)
-		if panelIndicator and panelIndicator.name then
-			Logger("Trek panel visible: " .. tostring(panelIndicator.name))
-			bagOpened = true
-			break
-		else
-			Logger("Panel not visible yet, retrying...")
-		end
-	end
-	
-	if not bagOpened then
-		Logger("Trek bag never opened; aborting Dawn Academy")
-		return false, false
-	end
-
-	Logger("Handle claim or close")
-	wait(0.5)  -- Extra wait for panel to fully load
-	local claimed = false
-	local claimBtn = SearchImageNew("trek/claimtrek1.png", Upper_Half, 0.8, true, false, 2)
-	if not (claimBtn and claimBtn.xy) then
-		claimBtn = SearchImageNew("trek/claimtrek.png", Upper_Half, 0.8, true, false, 2)
-	end
-        if claimBtn and claimBtn.xy then
-                Logger("Claim button found, tapping...")
-                if claimBtn.r then claimBtn.r:highlight(0.8) end
-                tapSearchResult(claimBtn, 1)
-                wait(0.8)
-                if claimBtn.r then claimBtn.r:highlightOff() end
-                updateDawnAcademyLastClaim(os.time())
-                Logger("Trek claim collected")
-                claimed = true
-	else
-		Logger("No claim button, looking for close...")
-		local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.8, true, false, 2)
-		if not (closeBtn and closeBtn.xy) then
-			closeBtn = SearchImageNew("trek/tap.png", Lower_Half, 0.8, true, false, 2)
-		end
-                if closeBtn and closeBtn.xy then
-                        if closeBtn.r then closeBtn.r:highlight(0.8) end
-                        tapSearchResult(closeBtn, 1)
-                        wait(0.5)
-                        if closeBtn.r then closeBtn.r:highlightOff() end
-                        Logger("Closed trek panel (claim unavailable)")
-                else
-                        Logger("Close/tap button missing; aborting Dawn Academy")
-			return false, false
-		end
-	end
-
-	wait(0.5)
-	Logger("Return to city")
-	local backBtn = SearchImageNew("trek/back.png", Upper_Left, 0.9, true, false, 3)
-        if backBtn and backBtn.xy then
-                if backBtn.r then backBtn.r:highlight(0.8) end
-                tapSearchResult(backBtn, 1)
-                wait(0.5)
-                if backBtn.r then backBtn.r:highlightOff() end
+        ClickImg("Side Closed.png", Upper_Left, 0.85)
+        Logger("Swipe Up x2")
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(0, 0), 0.1)
+        Logger("Click Trek Btn")
+        ClickImg("trek/trek.png", Lower_Left, nil)
+        Logger("Waiting back Btn to show ")
+        wait(1)
+        WaitExists("trek/back.png", 2, Upper_Left, 0.85)
+        if WaitExists("trek/bag.png", 1, Upper_Right, 0.8) then
+                Logger("Bag Btn Found , Clicking")
+                ClickImg("trek/bag.png", Upper_Right, 0.8)
         else
-                Logger("Back button not found; using Go_Back")
-                Go_Back("Dawn Academy back fallback")
-	end
-
-	return true, claimed
+                Logger("Bag Not Found ")
+                ClickImg("trek/back.png", Upper_Left, 0.85)
+        end
+        if WaitExists("trek/claimtrek1.png", 2, Upper_Right, 0.9) then
+                Logger("Claim Found , Clicking ")
+                ClickImg("trek/claimtrek1.png", Upper_Right, 0.9)
+                updateDawnAcademyLastClaim(os.time())
+                return true, true
+        else
+                Logger("Claim Button Not Found")
+                ClickImg("trek/close.png", Upper_Right, 0.89)
+                ClickImg("trek/back.png", Upper_Left, 0.9)
+                return true, false
+        end
 end
 
 
