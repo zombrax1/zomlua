@@ -50,7 +50,7 @@ local maxInjured
 local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315, 250), Region(350, 590, 315, 250)}, reqList = {}}, Meat = {timer = nil, cooldown = 0}, Wood = {timer = nil, cooldown = 0}, Coal = {timer = nil, cooldown = 0}, Iron = {timer = nil, cooldown = 0},
 	Tech = {timer = nil, cooldown = 0}, Attack = {timer = nil, cooldown = 0, counter = 0}, Exploration = {timer = nil, cooldown = 0}, Auto_Join = {timer = nil, cooldown = 0, enabled = false, status = false}, StartAPP1 = {timer = nil, cooldown = 0},
 	StartAPP2 = {timer = nil, cooldown = 0}, City = {timer = nil, cooldown = 0}, Arena = {timer = nil, cooldown = 0, dir = "Arena/"}, Crystal_Laboratory = {timer = nil, cooldown = 0, status = nil}, War_Academy = {timer = nil, cooldown = 0, status = nil},
-	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
+        Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Dawn_Academy = {enabled = false}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
@@ -301,11 +301,13 @@ function Main_GUI(version)
 	addSeparator()
 	addTextView("          Events")
 	newRow()
-	addCheckBox("City_Events", "City Events", false)
-	addCheckBox("AM_Enabled", "Alliance Mobilization", false)
-	addCheckBox("Map_Options", "Map Options", false)
-	addSeparator()
-	newRow()
+        addCheckBox("City_Events", "City Events", false)
+        addCheckBox("AM_Enabled", "Alliance Mobilization", false)
+        addCheckBox("Map_Options", "Map Options", false)
+        newRow()
+        addCheckBox("Run_Dawn_Academy", "Dawn Academy", false)
+        addSeparator()
+        newRow()
 	addCheckBox("Barney_Enabled", "Use Alternate Character", false)
 	addSeparator()
 	newRow()
@@ -1093,7 +1095,7 @@ function Reset_Daily_Events()
 		Logger("Ally Treasure: " ..tostring(Main.Pet_Adventure.ally_treasure))
 		Logger("Pet Adventure Timer and Cooldown refreshed")
 	end
-	
+
 	if (Enable_My_Island) then
 		Logger("Refreshing Daybreak Island")
 		Chief_Island_Claims = 3 
@@ -2515,44 +2517,39 @@ function Auto_Beast(Deploy_Btn, attackType, flagReq, useHero, useCounter)
 		end
 		return Use_All_Timer
 	end
-	----------- Search for Gina --------------------
-	local continue_flag, Hero_List = true, {}
+	----------- Hero Selection --------------------
+	local Hero_List = {}
 	if (useHero) then
 		if (Hero_Type == "Both") then Hero_List = {"Gina.png", "Bokan.png"}
 		else Hero_List = {string.format("%s.png", Hero_Type)} end
-	end
-	
-	if (useHero) and not(Use_All) then
+
 		Logger("Checking for Required HERO")
 		local Hero_Found = 0
 		for i, Cur_Hero in ipairs(Hero_List) do
 			local Hero_Status = SearchImageNew(Cur_Hero, Upper_Half, 0.85, true, false)
 			if (Hero_Status.name) then Hero_Found = Hero_Found + 1 end
 		end
-		if (Hero_Found == table.getn(Hero_List)) then continue_flag = false end
-	end
-	
-	local Troop_Flag
-	if (continue_flag) and not(flagReq == "0") then
-		Logger()
-		if not(Troop_Flag) then Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), Upper_Half, 0.9, true, false, 9999999) end
-		--PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Troop_Flag.r, 0.9, false, true)
-		PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46), 0.9, false, true)
-		Logger(string.format("Flag Selected: %s", flagReq))
-		if (useHero) then
-			Logger("Checking for required HERO")
-			local Hero_Found = 0
-			for i, Cur_Hero in ipairs(Hero_List) do
-				local Hero_Status = SearchImageNew(Cur_Hero, Upper_Half, 0.85, true, false)
-				if (Hero_Status.name) then Hero_Found = Hero_Found + 1 end
-			end
-			if not(Hero_Found == table.getn(Hero_List)) then
-				Go_Back("Required HERO is not found. Sleeping for 60 Seconds")
-				return 60
-			end
+		if not(Hero_Found == table.getn(Hero_List)) then
+			Go_Back("Required HERO is not found. Sleeping for 60 Seconds")
+			return 60
 		end
 	end
-	
+
+	----------- Flag Selection --------------------
+	local Troop_Flag
+	if not(flagReq == "0") then
+		Logger(string.format("Selecting user-defined flag: %s", flagReq))
+		if not(Troop_Flag) then Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), Upper_Half, 0.9, true, false, 9999999) end
+		if (Troop_Flag.name) then
+			--PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Troop_Flag.r, 0.9, false, true)
+			PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46), 0.9, false, true)
+			Logger(string.format("Flag Selected: %s", flagReq))
+		else
+			Go_Back(string.format("User-defined flag %s not found. Sleeping for 60 Seconds", flagReq))
+			return 60
+		end
+	end
+
 	local total_Seconds = Get_March_Time()
 	if (Solo_troop) and (attackType == "Polar Terror") then
 		PressRepeatNew("Withdraw All.png", "Zero Troops ON.png", 1, 2, Lower_Half, Lower_Half, 0.9, true, true)
@@ -4670,13 +4667,79 @@ function City_Storehouse(Intel_Button)
 	if (Intel_Button) then
 		PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
 	end
-	return getNextNearestTime()
+        return getNextNearestTime()
+end
+
+function Dawn_Academy()
+        Current_Function = getCurrentFunctionName()
+        Logger("Opening Dawn Academy")
+
+        local sidePanel = SearchImageNew("Side Closed.png", Upper_Left, 0.85, false, false, 1)
+        if (sidePanel.name) then Press(sidePanel.xy, 1) end
+
+        Logger("Swipe Up x2")
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(0, 0), 0.1)
+
+        Logger("Click Trek Btn")
+        local trekBtn = SearchImageNew("trek/trek.png", Lower_Left, 0.9, false, false, 2)
+        if not(trekBtn.name) then
+                Logger("Trek button not found")
+                return false, false
+        end
+        Press(trekBtn.xy, 1)
+
+        Logger("Waiting back Btn to show ")
+        wait(1)
+        local backBtn = SingleImageWait("trek/back.png", 2, Upper_Left, 0.85)
+        if not(backBtn) then
+                Logger("Back button not found")
+                local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.89, false, false, 1)
+                if (closeBtn.name) then Press(closeBtn.xy, 1) end
+                local fallbackBack = SearchImageNew("trek/back.png", Upper_Left, 0.9, false, false, 1)
+                if (fallbackBack.name) then Press(fallbackBack.xy, 1) end
+                return false, false
+        end
+
+        local bagBtn = SingleImageWait("trek/bag.png", 1, Upper_Right, 0.8)
+        if (bagBtn) then
+                Logger("Bag Btn Found , Clicking")
+                Press(bagBtn, 1)
+                wait(0.5)
+                local bagClose = SearchImageNew("trek/close.png", Upper_Right, 0.8, false, false, 1)
+                if (bagClose.name) then Press(bagClose.xy, 1) end
+                wait(0.5)
+                Press(backBtn, 1)
+        else
+                Logger("Bag Not Found")
+                Press(backBtn, 1)
+        end
+
+        local claimBtn = SingleImageWait("trek/claimtrek1.png", 2, Upper_Right, 0.9)
+        if (claimBtn) then
+                Logger("Claim Found , Clicking")
+                Press(claimBtn, 1)
+                wait(0.5)
+                local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.89, false, false, 1)
+                if (closeBtn.name) then Press(closeBtn.xy, 1) end
+                Press(backBtn, 1)
+                return true, true
+        else
+                Logger("Claim Button Not Found")
+                local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.89, false, false, 1)
+                if (closeBtn.name) then Press(closeBtn.xy, 1) end
+                Press(backBtn, 1)
+                return true, false
+        end
 end
 
 function Intel_Get_Stamina(Intel_Button)
-	local function timeToMinutes(timeString)
-		local hour, minute = timeString:match("(%d+):(%d+)")
-		return hour * 60 + minute
+        local function timeToMinutes(timeString)
+                local hour, minute = timeString:match("(%d+):(%d+)")
+                return hour * 60 + minute
 	end
 	local currentTime = os.date("%H:%M")
 	local result, result_time = false, "NA"
@@ -8218,14 +8281,30 @@ function StartBot(User_ID)
 		Main.Intel.timer:set()
 	end
 	
-	if (Storehouse_Stamina and not(Auto_Intel)) and (Main.Storehouse.timer:check() > Main.Storehouse.cooldown) then
-		Main.Storehouse.cooldown = City_Storehouse(nil)
-		Main.Storehouse.timer:set()
-	end
-	
-	---------------------- Beast and Polar Terror/Reaper -------------------------------------
-	if ((Auto_Attack) and not(Main.Intel.status)) and ((Auto_Attack) and not(Main.mercPrestige.enabled)) then	
-		if (Att_Timer) and not(Attack_Trigger) then
+        if (Storehouse_Stamina and not(Auto_Intel)) and (Main.Storehouse.timer:check() > Main.Storehouse.cooldown) then
+                Main.Storehouse.cooldown = City_Storehouse(nil)
+                Main.Storehouse.timer:set()
+        end
+
+        -- Dawn Academy manual run plan: honor GUI request once without touching timers/flags.
+        if (Main.Dawn_Academy.enabled) then
+                Logger("Running Dawn Academy (manual request)")
+                local opened, claimed = Dawn_Academy()
+                if (opened) then
+                        if (claimed) then
+                                Logger("Dawn Academy claim successful")
+                        else
+                                Logger("Dawn Academy already claimed")
+                        end
+                else
+                        Logger("Dawn Academy navigation failed")
+                end
+                Main.Dawn_Academy.enabled = false
+        end
+
+        ---------------------- Beast and Polar Terror/Reaper -------------------------------------
+        if ((Auto_Attack) and not(Main.Intel.status)) and ((Auto_Attack) and not(Main.mercPrestige.enabled)) then
+                if (Att_Timer) and not(Attack_Trigger) then
 			local currentTime = os.time()
 			if (tonumber(os.date("%H", currentTime)) == tonumber(Attack_Hour))then
 				if (tonumber(os.date("%M", currentTime)) >= tonumber(Attack_Minutes)) and (tonumber(os.date("%M", currentTime)) <= tonumber(Attack_Minutes) + 20) then
@@ -8599,9 +8678,11 @@ function RunScript(version)
 	Pack_Sale_Dir = scandirNew("Pack Sale")
 	if (table.getn(Pack_Sale_Dir) > 0) then for i, pack in ipairs(Pack_Sale_Dir) do table.insert(Pack_Sale_List, "Pack Sale/"..pack) end end
 	User_ID = getUserID()
-	Main_GUI(version)
-	
-	if (Send_Report_GUI) then Report_Sender() end
+        Main_GUI(version)
+
+        Main.Dawn_Academy.enabled = Run_Dawn_Academy or false
+
+        if (Send_Report_GUI) then Report_Sender() end
 	
 	if (Map_Options) then Maps_Options_GUI() end
 	
