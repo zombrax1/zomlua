@@ -82,6 +82,7 @@ local Enable_City_Timer = false
 local Chief_Order_Events = {}
 
 local DAWN_ACADEMY_PREF_KEY = "dawnAcademyLastClaim"
+local EXPERTS_CLAIM_TREKS_PREF_KEY = "expertsClaimTreksEnabled"
 local DAWN_ACADEMY_INTERVAL = 86400
 
 local function getDawnAcademyLastClaim()
@@ -119,6 +120,14 @@ end
 
 function updateDawnAcademyLastClaim(timestamp)
         preferencePutNumber(DAWN_ACADEMY_PREF_KEY, timestamp or os.time())
+end
+
+local function isExpertsClaimTreksEnabled()
+        return preferenceGetBoolean(EXPERTS_CLAIM_TREKS_PREF_KEY, false)
+end
+
+local function setExpertsClaimTreksEnabled(value)
+        preferencePutBoolean(EXPERTS_CLAIM_TREKS_PREF_KEY, value and true or false)
 end
 
 local new_startup = true
@@ -718,6 +727,8 @@ function CityEvents_GUI()
 end
 
 function Experts_GUI()
+        local claimTreksSetting = (Experts_ClaimTreks ~= nil) and Experts_ClaimTreks or isExpertsClaimTreksEnabled()
+        Experts_ClaimTreks = claimTreksSetting
         dialogInit()
         addTextView("Dawn Academy")
         newRow()
@@ -727,8 +738,10 @@ function Experts_GUI()
         newRow()
         addSeparator()
         newRow()
-        addCheckBox("Claim_Treks", "Claim Treks", Claim_Treks or false)
+        addCheckBox("Experts_ClaimTreks", "Claim Treks", claimTreksSetting)
         dialogShowFullScreen("Experts Options")
+        Experts_ClaimTreks = Experts_ClaimTreks and true or false
+        setExpertsClaimTreksEnabled(Experts_ClaimTreks)
 end
 
 function isValidTimeHHMM(timeString)
@@ -4741,6 +4754,7 @@ function Dawn_Academy()
         Logger("Waiting back Btn to show ")
         wait(1)
         WaitExists("trek/back.png", 2, Upper_Left, 0.85)
+        local claimed = false
         if WaitExists("trek/bag.png", 1, Upper_Right, 0.8) then
                 Logger("Bag Btn Found , Clicking")
                 ClickImg("trek/bag.png", Upper_Right, 0.8)
@@ -4757,13 +4771,14 @@ function Dawn_Academy()
                 wait(2)
                 ClickImg("trek/claimtrek1.png", Upper_Right, 0.9)
                 updateDawnAcademyLastClaim(os.time())
-                return true, true
+                claimed = true
         else
                 Logger("Claim Button Not Found")
                 ClickImg("trek/close.png", Upper_Right, 0.89)
                 ClickImg("trek/back.png", Upper_Left, 0.9)
-                return true, false
         end
+        BackToWorld()
+        return true, claimed
 end
 
 function Intel_Get_Stamina(Intel_Button)
@@ -8757,8 +8772,10 @@ function RunScript(version)
 	if (Auto_Gather) then RSS_Stats_Checker("1") end
         if (Enable_Volume_Control) then setVolumeDetect(true) end
 
-        Claim_Treks = Claim_Treks or false
-        Main.Dawn_Academy.enabled = Claim_Treks
+        local claimTreksEnabled = (Experts_ClaimTreks ~= nil) and Experts_ClaimTreks or isExpertsClaimTreksEnabled()
+        Experts_ClaimTreks = claimTreksEnabled and true or false
+        Main.Dawn_Academy.enabled = Experts_ClaimTreks
+        setExpertsClaimTreksEnabled(Experts_ClaimTreks)
         if (Main.Dawn_Academy.enabled) then
                 Main.Dawn_Academy.cooldown = getDawnAcademyCooldown()
         else
