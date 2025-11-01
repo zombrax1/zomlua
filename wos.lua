@@ -54,8 +54,8 @@ local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315,
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
-	Pet_Adventure = {timer = nil, cooldown = 0, dir = "Pet Skill/", ally_treasure = true, treasure_spots = true}, Barney = {timer = nil, cooldown = 0, bear_timer = nil, bear_cooldown = 0, status = false}, Extra_Gather_1 = {timer = nil, cooldown = 0}, 
-	Extra_Gather_2 = {timer = nil, cooldown = 0}, Pack_Promotion = {timer = nil, cooldown = 0}, Hero_Mission = {timer = nil, cooldown = 0, rewards = false, rewards_box = 0, enabled = false, status = false}, Reset = {timer = nil, cooldown = 0, cooldownBeforeReset = 0, status = true},
+        Pet_Adventure = {timer = nil, cooldown = 0, dir = "Pet Skill/", ally_treasure = true, treasure_spots = true}, Barney = {timer = nil, cooldown = 0, bear_timer = nil, bear_cooldown = 0, status = false}, Extra_Gather_1 = {timer = nil, cooldown = 0},
+        Extra_Gather_2 = {timer = nil, cooldown = 0}, Pack_Promotion = {timer = nil, cooldown = 0}, Hero_Mission = {timer = nil, cooldown = 0, rewards = false, rewards_box = 0, enabled = false, status = false}, Dawn_Academy = {timer = nil, cooldown = 0, enabled = false}, Reset = {timer = nil, cooldown = 0, cooldownBeforeReset = 0, status = true},
 	Storehouse = {timer = nil, cooldown = 0}, DailyRewards = {timer = nil, cooldown = 0}, Mail = {timer = nil, cooldown = 0}, mercPrestige = {timer = nil, cooldown = 0, lossCounter = 0, marchSet = 1, marchSettings = nil, enabled = false, status = false},
 	Events = {Status = false, List = {}}, rssGather = {marchTime =  {["Meat"] = 0, ["Wood"] = 0, ["Coal"] = 0, ["Iron"] = 0, ["Extra1"] = 0, ["Extra2"] = 0}, requiredGathers = {[1] = 0, [2] = 0, [3] = 0}}}
 	
@@ -80,6 +80,46 @@ local flags_coordinates = {}
 local Enable_City_Timer = false
 
 local Chief_Order_Events = {}
+
+local DAWN_ACADEMY_PREF_KEY = "dawnAcademyLastClaim"
+local DAWN_ACADEMY_INTERVAL = 86400
+
+local function getDawnAcademyLastClaim()
+        return preferenceGetNumber(DAWN_ACADEMY_PREF_KEY, 0)
+end
+
+local function formatDawnAcademyLastClaim()
+        local lastClaim = getDawnAcademyLastClaim()
+        if lastClaim <= 0 then
+                return "Never"
+        end
+        return os.date("%Y-%m-%d %H:%M:%S", lastClaim)
+end
+
+local function getDawnAcademyCooldown()
+        local lastClaim = getDawnAcademyLastClaim()
+        if lastClaim <= 0 then
+                return 0
+        end
+        local elapsed = os.time() - lastClaim
+        if elapsed < 0 then elapsed = 0 end
+        if elapsed >= DAWN_ACADEMY_INTERVAL then
+                return 0
+        end
+        return DAWN_ACADEMY_INTERVAL - elapsed
+end
+
+local function formatDawnAcademyCooldown()
+        local remaining = getDawnAcademyCooldown()
+        if remaining <= 0 then
+                return "Ready"
+        end
+        return Get_Time(remaining)
+end
+
+function updateDawnAcademyLastClaim(timestamp)
+        preferencePutNumber(DAWN_ACADEMY_PREF_KEY, timestamp or os.time())
+end
 
 local new_startup = true
 local Maps_Current_Iteration = 1
@@ -298,14 +338,15 @@ function Main_GUI(version)
 	addTextView("m")
 	addSpinner("mainDaybreakIslandOption", {"MyRewards", "Island Treasure", "Help Other", "All"}, "MyRewards")
 	newRow()
-	addSeparator()
-	addTextView("          Events")
-	newRow()
-	addCheckBox("City_Events", "City Events", false)
-	addCheckBox("AM_Enabled", "Alliance Mobilization", false)
-	addCheckBox("Map_Options", "Map Options", false)
-	addSeparator()
-	newRow()
+        addSeparator()
+        addTextView("          Events")
+        newRow()
+        addCheckBox("City_Events", "City Events", false)
+        addCheckBox("AM_Enabled", "Alliance Mobilization", false)
+        addCheckBox("Map_Options", "Map Options", false)
+        addCheckBox("Experts_Enabled", "Experts", false)
+        addSeparator()
+        newRow()
 	addCheckBox("Barney_Enabled", "Use Alternate Character", false)
 	addSeparator()
 	newRow()
@@ -635,10 +676,10 @@ function RSS_GUI_Settings()
 end
 
 function CityEvents_GUI()
-	dialogInit()
-	addCheckBox("Troops_Training", "Troops Training", true)
-	addCheckBox("upgradeTroops", "Priority Upgrade", false)
-	newRow()
+        dialogInit()
+        addCheckBox("Troops_Training", "Troops Training", true)
+        addCheckBox("upgradeTroops", "Priority Upgrade", false)
+        newRow()
 	addSeparator()
 	newRow()
 	addCheckBox("Recruit_Heroes", "Recruit Heroes", true)
@@ -673,7 +714,21 @@ function CityEvents_GUI()
 	if not(Auto_Intel) then
 		addCheckBox("Storehouse_Stamina", "Claim Stamina", false)
 	end
-	dialogShowFullScreen("City Events Options")
+        dialogShowFullScreen("City Events Options")
+end
+
+function Experts_GUI()
+        dialogInit()
+        addTextView("Dawn Academy")
+        newRow()
+        addTextView("  Last Claim: " ..formatDawnAcademyLastClaim())
+        newRow()
+        addTextView("  Next Claim: " ..formatDawnAcademyCooldown())
+        newRow()
+        addSeparator()
+        newRow()
+        addCheckBox("Claim_Treks", "Claim Treks", Claim_Treks or false)
+        dialogShowFullScreen("Experts Options")
 end
 
 function isValidTimeHHMM(timeString)
@@ -4596,9 +4651,9 @@ function getNextNearestTime()
 end --stops here
 
 function City_Storehouse(Intel_Button)
-	if (Intel_Button) then
-		Go_Back("Going back to World")
-	end
+        if (Intel_Button) then
+                Go_Back("Going back to World")
+        end
 	--------------- Use Side Button to Locate Research Facility --------------
 	Logger("Starting Stamina Claim")
 	
@@ -4670,14 +4725,52 @@ function City_Storehouse(Intel_Button)
 	if (Intel_Button) then
 		PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
 	end
-	return getNextNearestTime()
+        return getNextNearestTime()
+end
+
+function Dawn_Academy()
+        ClickImg("Side Closed.png", Upper_Left, 0.85)
+        Logger("Swipe Up x2")
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(0, 0), 0.1)
+        Logger("Click Trek Btn")
+        ClickImg("trek/trek.png", Lower_Left, nil)
+        Logger("Waiting back Btn to show ")
+        wait(1)
+        WaitExists("trek/back.png", 2, Upper_Left, 0.85)
+        if WaitExists("trek/bag.png", 1, Upper_Right, 0.8) then
+                Logger("Bag Btn Found , Clicking")
+                ClickImg("trek/bag.png", Upper_Right, 0.8)
+                wait(0.5)
+                ClickImg("trek/close.png", Upper_Right, 0.8)
+                wait(0.5)
+                ClickImg("trek/back.png", Upper_Left, 0.9)
+        else
+                Logger("Bag Not Found ")
+                ClickImg("trek/back.png", Upper_Left, 0.85)
+        end
+        if WaitExists("trek/claimtrek1.png", 2, Upper_Right, 0.9) then
+                Logger("Claim Found , Clicking ")
+                wait(2)
+                ClickImg("trek/claimtrek1.png", Upper_Right, 0.9)
+                updateDawnAcademyLastClaim(os.time())
+                return true, true
+        else
+                Logger("Claim Button Not Found")
+                ClickImg("trek/close.png", Upper_Right, 0.89)
+                ClickImg("trek/back.png", Upper_Left, 0.9)
+                return true, false
+        end
 end
 
 function Intel_Get_Stamina(Intel_Button)
-	local function timeToMinutes(timeString)
-		local hour, minute = timeString:match("(%d+):(%d+)")
-		return hour * 60 + minute
-	end
+        local function timeToMinutes(timeString)
+                local hour, minute = timeString:match("(%d+):(%d+)")
+                return hour * 60 + minute
+        end
 	local currentTime = os.date("%H:%M")
 	local result, result_time = false, "NA"
 	for i = Intel_Count, 1, -1 do
@@ -7893,14 +7986,16 @@ function Timer_Setup()
 		if (Bear_Now_later == "byEvents") then Main.Bear_Event.cooldown = Get_Time_Difference(nil, Bear_Start_Time) end			
 	end
 	
-	if (Auto_Intel) then 
-		Main.Intel.timer = Timer()
-		if (Intel_Now_later == "Later") then Main.Intel.cooldown = Get_Nearest_Time() end
-	end
-	
-	if (Auto_DailyRewards) then Main.DailyRewards.timer = Timer() end
-	
-	if (Auto_Mail) then Main.Mail.timer = Timer() end
+        if (Auto_Intel) then
+                Main.Intel.timer = Timer()
+                if (Intel_Now_later == "Later") then Main.Intel.cooldown = Get_Nearest_Time() end
+        end
+
+        if (Main.Dawn_Academy.enabled) then Main.Dawn_Academy.timer = Timer() end
+
+        if (Auto_DailyRewards) then Main.DailyRewards.timer = Timer() end
+
+        if (Auto_Mail) then Main.Mail.timer = Timer() end
 	
 	if (Storehouse_Stamina and not(Auto_Intel)) then Main.Storehouse.timer = Timer() end
 	
@@ -8218,12 +8313,26 @@ function StartBot(User_ID)
 		Main.Intel.timer:set()
 	end
 	
-	if (Storehouse_Stamina and not(Auto_Intel)) and (Main.Storehouse.timer:check() > Main.Storehouse.cooldown) then
-		Main.Storehouse.cooldown = City_Storehouse(nil)
-		Main.Storehouse.timer:set()
-	end
-	
-	---------------------- Beast and Polar Terror/Reaper -------------------------------------
+        if (Storehouse_Stamina and not(Auto_Intel)) and (Main.Storehouse.timer:check() > Main.Storehouse.cooldown) then
+                Main.Storehouse.cooldown = City_Storehouse(nil)
+                Main.Storehouse.timer:set()
+        end
+
+        if (Main.Dawn_Academy.enabled) and Main.Dawn_Academy.timer and (Main.Dawn_Academy.timer:check() > Main.Dawn_Academy.cooldown) then
+                local success, claimed = Dawn_Academy()
+                if success then
+                        if claimed then
+                                Main.Dawn_Academy.cooldown = getDawnAcademyCooldown()
+                        else
+                                Main.Dawn_Academy.cooldown = 3600
+                        end
+                else
+                        Main.Dawn_Academy.cooldown = 900
+                end
+                Main.Dawn_Academy.timer:set()
+        end
+
+        ---------------------- Beast and Polar Terror/Reaper -------------------------------------
 	if ((Auto_Attack) and not(Main.Intel.status)) and ((Auto_Attack) and not(Main.mercPrestige.enabled)) then	
 		if (Att_Timer) and not(Attack_Trigger) then
 			local currentTime = os.time()
@@ -8628,10 +8737,11 @@ function RunScript(version)
 		if (Label.name) then Label_Region = Region(0, Label.y + Label.h, screen.x, 40) 
 		else Label_Region = Region(0, 89, screen.x, 40) end
 	end
-	if (AM_Enabled) then Alliance_Mobilization_GUI() end
-	if (City_Events) then CityEvents_GUI() end
-	if (Enable_Bear_Event) then Bear_Hunting_GUI() end
-	if (Chief_Order) then Chief_Order_GUI() end	
+        if (AM_Enabled) then Alliance_Mobilization_GUI() end
+        if (City_Events) then CityEvents_GUI() end
+        if (Experts_Enabled) then Experts_GUI() end
+        if (Enable_Bear_Event) then Bear_Hunting_GUI() end
+        if (Chief_Order) then Chief_Order_GUI() end
 	if (Auto_Gather) then
 		if (Auto_Gather_Option == 1) then RSS_GUI1() 
 		else RSS_GUI2() end
@@ -8645,9 +8755,18 @@ function RunScript(version)
 		RSS_GUI_Settings()
 	end
 	if (Auto_Gather) then RSS_Stats_Checker("1") end
-	if (Enable_Volume_Control) then setVolumeDetect(true) end
-	if (getUserID() ~= "") then 
-		Logger("Script Started - P")
+        if (Enable_Volume_Control) then setVolumeDetect(true) end
+
+        Claim_Treks = Claim_Treks or false
+        Main.Dawn_Academy.enabled = Claim_Treks
+        if (Main.Dawn_Academy.enabled) then
+                Main.Dawn_Academy.cooldown = getDawnAcademyCooldown()
+        else
+                Main.Dawn_Academy.timer = nil
+                Main.Dawn_Academy.cooldown = 0
+        end
+        if (getUserID() ~= "") then
+                Logger("Script Started - P")
 		Message.Game_Name = "WhiteOut Survival P"
 	else Logger("Script Started - T") end
 	local Restart_Counter, Iteration = 0, 0
