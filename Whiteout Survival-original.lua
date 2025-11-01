@@ -52,7 +52,6 @@ local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315,
 	StartAPP2 = {timer = nil, cooldown = 0}, City = {timer = nil, cooldown = 0}, Arena = {timer = nil, cooldown = 0, dir = "Arena/"}, Crystal_Laboratory = {timer = nil, cooldown = 0, status = nil}, War_Academy = {timer = nil, cooldown = 0, status = nil},
 	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
-	Experts = {timer = nil, cooldown = 0, enabled = false},
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
 	Pet_Adventure = {timer = nil, cooldown = 0, dir = "Pet Skill/", ally_treasure = true, treasure_spots = true}, Barney = {timer = nil, cooldown = 0, bear_timer = nil, bear_cooldown = 0, status = false}, Extra_Gather_1 = {timer = nil, cooldown = 0}, 
@@ -341,8 +340,6 @@ function Main_GUI(version)
 	newRow()
 	addCheckBox("ignorePersistence", "Ignore Persistence", false)
 	addCheckBox("readChangelogs", "Changelogs", false)
-	newRow()
-	addCheckBox("Experts", "Experts", false)
 	addSeparator()
 	if (getUserID() ~= "") then
 		newRow()
@@ -520,12 +517,6 @@ function AutoAttack_GUI()
 	end
 	Main.Attack.counter = preferenceGetNumber("attackLimitCounter", 0)
 	if (Auto_Hero_Mission) then table.insert(Main.Events.List, "Hero Mission/Events Hero Mission Tab.png") end
-end
-
-function Experts_GUI()
-	dialogInit()
-	addCheckBox("Experts_ClaimTreks", "Claim Treks", false)
-	dialogShowFullScreen("Experts")
 end
 
 function RSS_GUI1()
@@ -1805,36 +1796,6 @@ function SearchImageNew(target, boxRegion, maxScore, Color, Mask, Time)
 	Search_Timer = nil
 	target, boxRegion, maxScore, Color, Mask, Time = nil, nil, nil, nil, nil, nil
     return result
-end
-
-function ClickImg(target, region, score)
-	local result = SearchImageNew(target, region, score or 0.9, false, false, 1)
-	if (result.name) then
-		Press(result.xy, 1)
-		return true, result
-	end
-	return false, result
-end
-
-function WaitExists(target, waitTime, region, score)
-	local image = SingleImageWait(target, waitTime or 0, region, score or 0.9)
-	if (image) then
-		local center = image:getCenter()
-		local X, Y = center:getX(), center:getY()
-		local W, H = image:getW(), image:getH()
-		return {
-			name = get_file_name(target),
-			x = X,
-			y = Y,
-			xy = Location(X, Y),
-			w = W,
-			h = H,
-			sx = image:getX(),
-			sy = image:getY(),
-			score = image:getScore()
-		}
-	end
-	return nil
 end
 
 function testClick()
@@ -4709,67 +4670,79 @@ function City_Storehouse(Intel_Button)
 	if (Intel_Button) then
 		PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
 	end
-	return getNextNearestTime()
+        return getNextNearestTime()
 end
 
 function Dawn_Academy()
-	Current_Function = getCurrentFunctionName()
-	Logger("Opening Dawn Academy")
-	ClickImg("Side Closed.png", Upper_Left, 0.85)
-	Logger("Swipe Up x2")
-	swipe(Location(6, 845), Location(6, 10), 0.5)
-	wait(0.5)
-	swipe(Location(6, 845), Location(6, 10), 0.5)
-	wait(0.5)
-	swipe(Location(6, 845), Location(0, 0), 0.1)
-	Logger("Click Trek Btn")
-	local trekClicked = ClickImg("trek/trek.png", Lower_Left, 0.9)
-	if not(trekClicked) then
-		Logger("Trek button not found")
-		return false, false
-	end
-	Logger("Waiting back Btn to show ")
-	wait(1)
-	local backBtn = WaitExists("trek/back.png", 2, Upper_Left, 0.85)
-	if not(backBtn) then
-		Logger("Back button not found")
-		ClickImg("trek/close.png", Upper_Right, 0.89)
-		ClickImg("trek/back.png", Upper_Left, 0.9)
-		return false, false
-	end
-	local bagBtn = WaitExists("trek/bag.png", 1, Upper_Right, 0.8)
-	if (bagBtn) then
-		Logger("Bag Btn Found , Clicking")
-		ClickImg("trek/bag.png", Upper_Right, 0.8)
-		wait(0.5)
-		ClickImg("trek/close.png", Upper_Right, 0.8)
-		wait(0.5)
-		ClickImg("trek/back.png", Upper_Left, 0.9)
-	else
-		Logger("Bag Not Found ")
-		ClickImg("trek/back.png", Upper_Left, 0.85)
-	end
-	local claimBtn = WaitExists("trek/claimtrek1.png", 2, Upper_Right, 0.9)
-	if (claimBtn) then
-		Logger("Claim Found , Clicking ")
-		ClickImg("trek/claimtrek1.png", Upper_Right, 0.9)
-		updateDawnAcademyLastClaim(os.time())
-		wait(0.5)
-		ClickImg("trek/close.png", Upper_Right, 0.89)
-		ClickImg("trek/back.png", Upper_Left, 0.9)
-		return true, true
-	else
-		Logger("Claim Button Not Found")
-		ClickImg("trek/close.png", Upper_Right, 0.89)
-		ClickImg("trek/back.png", Upper_Left, 0.9)
-		return true, false
-	end
+        Current_Function = getCurrentFunctionName()
+        Logger("Opening Dawn Academy")
+
+        local sidePanel = SearchImageNew("Side Closed.png", Upper_Left, 0.85, false, false, 1)
+        if (sidePanel.name) then Press(sidePanel.xy, 1) end
+
+        Logger("Swipe Up x2")
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(6, 10), 0.5)
+        wait(0.5)
+        swipe(Location(6, 845), Location(0, 0), 0.1)
+
+        Logger("Click Trek Btn")
+        local trekBtn = SearchImageNew("trek/trek.png", Lower_Left, 0.9, false, false, 2)
+        if not(trekBtn.name) then
+                Logger("Trek button not found")
+                return false, false
+        end
+        Press(trekBtn.xy, 1)
+
+        Logger("Waiting back Btn to show ")
+        wait(1)
+        local backBtn = SingleImageWait("trek/back.png", 2, Upper_Left, 0.85)
+        if not(backBtn) then
+                Logger("Back button not found")
+                local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.89, false, false, 1)
+                if (closeBtn.name) then Press(closeBtn.xy, 1) end
+                local fallbackBack = SearchImageNew("trek/back.png", Upper_Left, 0.9, false, false, 1)
+                if (fallbackBack.name) then Press(fallbackBack.xy, 1) end
+                return false, false
+        end
+
+        local bagBtn = SingleImageWait("trek/bag.png", 1, Upper_Right, 0.8)
+        if (bagBtn) then
+                Logger("Bag Btn Found , Clicking")
+                Press(bagBtn, 1)
+                wait(0.5)
+                local bagClose = SearchImageNew("trek/close.png", Upper_Right, 0.8, false, false, 1)
+                if (bagClose.name) then Press(bagClose.xy, 1) end
+                wait(0.5)
+                Press(backBtn, 1)
+        else
+                Logger("Bag Not Found")
+                Press(backBtn, 1)
+        end
+
+        local claimBtn = SingleImageWait("trek/claimtrek1.png", 2, Upper_Right, 0.9)
+        if (claimBtn) then
+                Logger("Claim Found , Clicking")
+                Press(claimBtn, 1)
+                wait(0.5)
+                local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.89, false, false, 1)
+                if (closeBtn.name) then Press(closeBtn.xy, 1) end
+                Press(backBtn, 1)
+                return true, true
+        else
+                Logger("Claim Button Not Found")
+                local closeBtn = SearchImageNew("trek/close.png", Upper_Right, 0.89, false, false, 1)
+                if (closeBtn.name) then Press(closeBtn.xy, 1) end
+                Press(backBtn, 1)
+                return true, false
+        end
 end
 
 function Intel_Get_Stamina(Intel_Button)
-	local function timeToMinutes(timeString)
-		local hour, minute = timeString:match("(%d+):(%d+)")
-		return hour * 60 + minute
+        local function timeToMinutes(timeString)
+                local hour, minute = timeString:match("(%d+):(%d+)")
+                return hour * 60 + minute
 	end
 	local currentTime = os.date("%H:%M")
 	local result, result_time = false, "NA"
@@ -7997,11 +7970,6 @@ function Timer_Setup()
 	
 	if (Storehouse_Stamina and not(Auto_Intel)) then Main.Storehouse.timer = Timer() end
 	
-	if (Main.Experts.enabled) then
-		Main.Experts.timer = Timer()
-		Main.Experts.cooldown = 0
-	end
-	
 	if (Chief_Order) then
 		Main.Chief_Order_Event.timer = Timer() 
 		Main.Chief_Order_Event.cooldown = Populate_Chief_Order_Events()
@@ -8319,21 +8287,6 @@ function StartBot(User_ID)
 	if (Storehouse_Stamina and not(Auto_Intel)) and (Main.Storehouse.timer:check() > Main.Storehouse.cooldown) then
 		Main.Storehouse.cooldown = City_Storehouse(nil)
 		Main.Storehouse.timer:set()
-	end
-	
-	if (Main.Experts.enabled) and (Main.Experts.timer:check() > Main.Experts.cooldown) then
-		local nextCooldown = getNextNearestTime()
-		if not(hasClaimedDawnAcademyToday()) then
-			local opened, claimed = Dawn_Academy()
-			if (opened and claimed) then
-				Main.Experts.cooldown = nextCooldown
-			else
-				Main.Experts.cooldown = 600
-			end
-		else
-			Main.Experts.cooldown = nextCooldown
-		end
-		Main.Experts.timer:set()
 	end
 	
 	---------------------- Beast and Polar Terror/Reaper -------------------------------------
@@ -8689,15 +8642,6 @@ function getResetTime()
     return Reset_Time
 end
 
-function updateDawnAcademyLastClaim(timestamp)
-	preferencePutNumber("dawnAcademyLastClaimTs", timestamp)
-	preferencePutString("dawnAcademyLastClaimDate", os.date("%Y-%m-%d", timestamp))
-end
-
-function hasClaimedDawnAcademyToday()
-	return preferenceGetString("dawnAcademyLastClaimDate", "NA") == Current_Date
-end
-
 function ScreenSizeChecker()
 	if not(screen.x == 720 and screen.y == 1520) then
 		dialogInit()
@@ -8722,19 +8666,6 @@ function RunScript(version)
 	if (table.getn(Pack_Sale_Dir) > 0) then for i, pack in ipairs(Pack_Sale_Dir) do table.insert(Pack_Sale_List, "Pack Sale/"..pack) end end
 	User_ID = getUserID()
 	Main_GUI(version)
-	
-	if (Experts) then
-		Experts_GUI()
-		Main.Experts.enabled = Experts_ClaimTreks
-	else
-		Experts_ClaimTreks = false
-		Main.Experts.enabled = false
-	end
-	
-	if not(Main.Experts.enabled) then
-		Main.Experts.timer = nil
-		Main.Experts.cooldown = 0
-	end
 	
 	if (Send_Report_GUI) then Report_Sender() end
 	
