@@ -1094,6 +1094,7 @@ function Reset_Daily_Events()
 		Logger("Treasure Spots: " ..tostring(Main.Pet_Adventure.treasure_spots))
 		Logger("Ally Treasure: " ..tostring(Main.Pet_Adventure.ally_treasure))
 		Logger("Pet Adventure Timer and Cooldown refreshed")
+	end
 
 	if (Enable_My_Island) then
 		Logger("Refreshing Daybreak Island")
