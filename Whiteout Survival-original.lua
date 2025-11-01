@@ -1094,8 +1094,7 @@ function Reset_Daily_Events()
 		Logger("Treasure Spots: " ..tostring(Main.Pet_Adventure.treasure_spots))
 		Logger("Ally Treasure: " ..tostring(Main.Pet_Adventure.ally_treasure))
 		Logger("Pet Adventure Timer and Cooldown refreshed")
-	end
-	
+
 	if (Enable_My_Island) then
 		Logger("Refreshing Daybreak Island")
 		Chief_Island_Claims = 3 
@@ -2517,44 +2516,39 @@ function Auto_Beast(Deploy_Btn, attackType, flagReq, useHero, useCounter)
 		end
 		return Use_All_Timer
 	end
-	----------- Search for Gina --------------------
-	local continue_flag, Hero_List = true, {}
+	----------- Hero Selection --------------------
+	local Hero_List = {}
 	if (useHero) then
 		if (Hero_Type == "Both") then Hero_List = {"Gina.png", "Bokan.png"}
 		else Hero_List = {string.format("%s.png", Hero_Type)} end
-	end
-	
-	if (useHero) and not(Use_All) then
+
 		Logger("Checking for Required HERO")
 		local Hero_Found = 0
 		for i, Cur_Hero in ipairs(Hero_List) do
 			local Hero_Status = SearchImageNew(Cur_Hero, Upper_Half, 0.85, true, false)
 			if (Hero_Status.name) then Hero_Found = Hero_Found + 1 end
 		end
-		if (Hero_Found == table.getn(Hero_List)) then continue_flag = false end
-	end
-	
-	local Troop_Flag
-	if (continue_flag) and not(flagReq == "0") then
-		Logger()
-		if not(Troop_Flag) then Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), Upper_Half, 0.9, true, false, 9999999) end
-		--PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Troop_Flag.r, 0.9, false, true)
-		PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46), 0.9, false, true)
-		Logger(string.format("Flag Selected: %s", flagReq))
-		if (useHero) then
-			Logger("Checking for required HERO")
-			local Hero_Found = 0
-			for i, Cur_Hero in ipairs(Hero_List) do
-				local Hero_Status = SearchImageNew(Cur_Hero, Upper_Half, 0.85, true, false)
-				if (Hero_Status.name) then Hero_Found = Hero_Found + 1 end
-			end
-			if not(Hero_Found == table.getn(Hero_List)) then
-				Go_Back("Required HERO is not found. Sleeping for 60 Seconds")
-				return 60
-			end
+		if not(Hero_Found == table.getn(Hero_List)) then
+			Go_Back("Required HERO is not found. Sleeping for 60 Seconds")
+			return 60
 		end
 	end
-	
+
+	----------- Flag Selection --------------------
+	local Troop_Flag
+	if not(flagReq == "0") then
+		Logger(string.format("Selecting user-defined flag: %s", flagReq))
+		if not(Troop_Flag) then Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), Upper_Half, 0.9, true, false, 9999999) end
+		if (Troop_Flag.name) then
+			--PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Troop_Flag.r, 0.9, false, true)
+			PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46), 0.9, false, true)
+			Logger(string.format("Flag Selected: %s", flagReq))
+		else
+			Go_Back(string.format("User-defined flag %s not found. Sleeping for 60 Seconds", flagReq))
+			return 60
+		end
+	end
+
 	local total_Seconds = Get_March_Time()
 	if (Solo_troop) and (attackType == "Polar Terror") then
 		PressRepeatNew("Withdraw All.png", "Zero Troops ON.png", 1, 2, Lower_Half, Lower_Half, 0.9, true, true)
