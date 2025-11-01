@@ -8305,7 +8305,6 @@ function StartBot(User_ID)
                         Logger("Dawn Academy navigation failed")
                 end
                 Main.Dawn_Academy.enabled = false
-                return "Completed"
         end
 
         ---------------------- Beast and Polar Terror/Reaper -------------------------------------
