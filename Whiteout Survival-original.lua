@@ -50,7 +50,7 @@ local maxInjured
 local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315, 250), Region(350, 590, 315, 250)}, reqList = {}}, Meat = {timer = nil, cooldown = 0}, Wood = {timer = nil, cooldown = 0}, Coal = {timer = nil, cooldown = 0}, Iron = {timer = nil, cooldown = 0},
 	Tech = {timer = nil, cooldown = 0}, Attack = {timer = nil, cooldown = 0, counter = 0}, Exploration = {timer = nil, cooldown = 0}, Auto_Join = {timer = nil, cooldown = 0, enabled = false, status = false}, StartAPP1 = {timer = nil, cooldown = 0},
 	StartAPP2 = {timer = nil, cooldown = 0}, City = {timer = nil, cooldown = 0}, Arena = {timer = nil, cooldown = 0, dir = "Arena/"}, Crystal_Laboratory = {timer = nil, cooldown = 0, status = nil}, War_Academy = {timer = nil, cooldown = 0, status = nil},
-	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
+        Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Dawn_Academy = {enabled = false}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
@@ -301,11 +301,13 @@ function Main_GUI(version)
 	addSeparator()
 	addTextView("          Events")
 	newRow()
-	addCheckBox("City_Events", "City Events", false)
-	addCheckBox("AM_Enabled", "Alliance Mobilization", false)
-	addCheckBox("Map_Options", "Map Options", false)
-	addSeparator()
-	newRow()
+        addCheckBox("City_Events", "City Events", false)
+        addCheckBox("AM_Enabled", "Alliance Mobilization", false)
+        addCheckBox("Map_Options", "Map Options", false)
+        newRow()
+        addCheckBox("Run_Dawn_Academy", "Dawn Academy", false)
+        addSeparator()
+        newRow()
 	addCheckBox("Barney_Enabled", "Use Alternate Character", false)
 	addSeparator()
 	newRow()
@@ -8284,14 +8286,31 @@ function StartBot(User_ID)
 		Main.Intel.timer:set()
 	end
 	
-	if (Storehouse_Stamina and not(Auto_Intel)) and (Main.Storehouse.timer:check() > Main.Storehouse.cooldown) then
-		Main.Storehouse.cooldown = City_Storehouse(nil)
-		Main.Storehouse.timer:set()
-	end
-	
-	---------------------- Beast and Polar Terror/Reaper -------------------------------------
-	if ((Auto_Attack) and not(Main.Intel.status)) and ((Auto_Attack) and not(Main.mercPrestige.enabled)) then	
-		if (Att_Timer) and not(Attack_Trigger) then
+        if (Storehouse_Stamina and not(Auto_Intel)) and (Main.Storehouse.timer:check() > Main.Storehouse.cooldown) then
+                Main.Storehouse.cooldown = City_Storehouse(nil)
+                Main.Storehouse.timer:set()
+        end
+
+        -- Dawn Academy manual run plan: honor GUI request once without touching timers/flags.
+        if (Main.Dawn_Academy.enabled) then
+                Logger("Running Dawn Academy (manual request)")
+                local opened, claimed = Dawn_Academy()
+                if (opened) then
+                        if (claimed) then
+                                Logger("Dawn Academy claim successful")
+                        else
+                                Logger("Dawn Academy already claimed")
+                        end
+                else
+                        Logger("Dawn Academy navigation failed")
+                end
+                Main.Dawn_Academy.enabled = false
+                return "Completed"
+        end
+
+        ---------------------- Beast and Polar Terror/Reaper -------------------------------------
+        if ((Auto_Attack) and not(Main.Intel.status)) and ((Auto_Attack) and not(Main.mercPrestige.enabled)) then
+                if (Att_Timer) and not(Attack_Trigger) then
 			local currentTime = os.time()
 			if (tonumber(os.date("%H", currentTime)) == tonumber(Attack_Hour))then
 				if (tonumber(os.date("%M", currentTime)) >= tonumber(Attack_Minutes)) and (tonumber(os.date("%M", currentTime)) <= tonumber(Attack_Minutes) + 20) then
@@ -8665,9 +8684,11 @@ function RunScript(version)
 	Pack_Sale_Dir = scandirNew("Pack Sale")
 	if (table.getn(Pack_Sale_Dir) > 0) then for i, pack in ipairs(Pack_Sale_Dir) do table.insert(Pack_Sale_List, "Pack Sale/"..pack) end end
 	User_ID = getUserID()
-	Main_GUI(version)
-	
-	if (Send_Report_GUI) then Report_Sender() end
+        Main_GUI(version)
+
+        Main.Dawn_Academy.enabled = Run_Dawn_Academy or false
+
+        if (Send_Report_GUI) then Report_Sender() end
 	
 	if (Map_Options) then Maps_Options_GUI() end
 	
