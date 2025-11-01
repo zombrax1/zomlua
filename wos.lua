@@ -10,8 +10,6 @@ if (ImageCache) then
 	ImageCache:setCacheNumber(20)
 end
 
-local lastHomeScreenSkipLog = 0
-
 local _execute = os.execute
 local _io = io
 
@@ -26,20 +24,9 @@ local Upper_Half = Region(0, 0, screen.x, screen.y/2)
 local Upper_Right = Region(screen.x/2, 0, screen.x/2, screen.y/2)
 local Upper_Left = Region(0, 0, screen.x/2, screen.y/2)
 local Lower_Half = Region(0, screen.y/2, screen.x, screen.y/2)
-local Lower_Right = Region(screen.x/2, screen.y/2, screen.x/2, screen.y/2)
+local Lower_Right = Region(screen.x/2, screen.y/2, screen.x, screen.y/2)
 local Lower_Left = Region(0, screen.y/2, screen.x/2, screen.y/2)
 local Lower_Most_Half = Region(0, screen.y - screen.y/14, screen.x, screen.y/14)
-local Agnes_Region = Region(0, math.floor(screen.y * 0.08), math.floor(screen.x * 0.30), math.floor(screen.y * 0.42))
-local Trek_Bag_Indicators = {"trek/claimtrek.png", "trek/claimtrek1.png", "trek/close.png", "trek/bar.png", "trek/tap.png"}
-local Nomadic_Discount_Patterns = {"Nomadic Merchant/NMP.png", "Nomadic Percentage.png", "Nomadic No Discount.png"}
-local Nomadic_Slot_ROI = {
-	Region(30, 630, 197, 54),
-	Region(261, 630, 197, 54),
-	Region(493, 630, 197, 54),
-	Region(30, 919, 197, 54),
-	Region(261, 919, 197, 54),
-	Region(493, 919, 197, 54)
-}
 
 ------- Pre Configured Buttons ---------
 local Back_Btn, Obtain_More_X = nil, nil
@@ -59,10 +46,11 @@ local txtLogs = ""
 local Bear_Max_March = 0
 local Reset_Time = nil
 local maxInjured
+
 local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315, 250), Region(350, 590, 315, 250)}, reqList = {}}, Meat = {timer = nil, cooldown = 0}, Wood = {timer = nil, cooldown = 0}, Coal = {timer = nil, cooldown = 0}, Iron = {timer = nil, cooldown = 0},
 	Tech = {timer = nil, cooldown = 0}, Attack = {timer = nil, cooldown = 0, counter = 0}, Exploration = {timer = nil, cooldown = 0}, Auto_Join = {timer = nil, cooldown = 0, enabled = false, status = false}, StartAPP1 = {timer = nil, cooldown = 0},
 	StartAPP2 = {timer = nil, cooldown = 0}, City = {timer = nil, cooldown = 0}, Arena = {timer = nil, cooldown = 0, dir = "Arena/"}, Crystal_Laboratory = {timer = nil, cooldown = 0, status = nil}, War_Academy = {timer = nil, cooldown = 0, status = nil},
-	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Experts = {timer = nil, cooldown = 0, enabled = false, request = false, dawnEnabled = false, dawnTimer = nil, dawnCooldown = 0, dawnNeedsImmediateCheck = false, dawnInterval = 0, enlistEnabled = false, enlistPending = false, enlistTimer = nil, enlistCooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
+	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
@@ -70,105 +58,10 @@ local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315,
 	Extra_Gather_2 = {timer = nil, cooldown = 0}, Pack_Promotion = {timer = nil, cooldown = 0}, Hero_Mission = {timer = nil, cooldown = 0, rewards = false, rewards_box = 0, enabled = false, status = false}, Reset = {timer = nil, cooldown = 0, cooldownBeforeReset = 0, status = true},
 	Storehouse = {timer = nil, cooldown = 0}, DailyRewards = {timer = nil, cooldown = 0}, Mail = {timer = nil, cooldown = 0}, mercPrestige = {timer = nil, cooldown = 0, lossCounter = 0, marchSet = 1, marchSettings = nil, enabled = false, status = false},
 	Events = {Status = false, List = {}}, rssGather = {marchTime =  {["Meat"] = 0, ["Wood"] = 0, ["Coal"] = 0, ["Iron"] = 0, ["Extra1"] = 0, ["Extra2"] = 0}, requiredGathers = {[1] = 0, [2] = 0, [3] = 0}}}
-
-local function primeMainTaskTimers()
-	Main.forceInitialSweep = true
-	for name, task in pairs(Main) do
-		if typeOf(task) == "table" then
-			local cooldown = rawget(task, "cooldown")
-			if cooldown ~= nil then
-				if typeOf(cooldown) == "number" then
-					task.cooldown = -1
-				end
-			else
-				if rawget(task, "timer") ~= nil then
-					task.cooldown = -1
-				end
-			end
-			if name == "Experts" then
-				if task.dawnEnabled then
-					task.dawnCooldown = 0
-				end
-				if task.enlistEnabled then
-					task.enlistCooldown = 0
-				end
-			end
-		end
-	end
-end
 	
 local Alt_Events = {Alt_Tech = false, Alt_Alliance_Chest = false, Alt_Exploration = false, Alt_My_Island = false, Alt_Training_Troops = false, Alt_Recruit_Heroes = false, Alt_Pet_Adventure = false, Alt_Arena = false, 
 	Alt_Gather_RSS = false, Alt_Auto_Join = false, Alt_Pet_Skills = false, Alt_City_Store = false, Alt_Daily_Rewards = false, Alt_War_Academy = false, Chief_Order_store = false, Alt_Crystal_Laboratory = false, 
 	Alt_Mail = false, Alt_Bear = false, Nomadic_Merchant = false, Heal = false, Help = false, Alt_Triumph = false, Alt_Labyrinth = false}
-
-local Enlistment_Claim_Date = preferenceGetString("expertsEnlistmentDate", "NA")
-local Enlistment_Button_Region = Region(244, 101, 152, 152)
-
-local DAWN_ACADEMY_PREF_KEY = "expertsDawnAcademyLastClaim"
-local Dawn_Academy_Last_Claim = tonumber(preferenceGetString(DAWN_ACADEMY_PREF_KEY, ""))
-
-local function updateDawnAcademyLastClaim(epoch)
-	Dawn_Academy_Last_Claim = epoch
-	if (epoch) then
-		preferencePutString(DAWN_ACADEMY_PREF_KEY, tostring(epoch))
-	else
-		preferencePutString(DAWN_ACADEMY_PREF_KEY, "")
-	end
-end
-
-local function getDawnAcademyLastClaim()
-	return Dawn_Academy_Last_Claim
-end
-
-local shouldTriggerImmediateDawnAcademy
-
-local function expertsLogMessage(message)
-	if (Label_Region) then
-		Logger(message)
-	else
-		print(message)
-	end
-end
-
-local function scheduleEnlistmentClaim(context)
-	context = context or ""
-	if not Main.Experts.enlistEnabled then
-		return
-	end
-	local today = os.date("%Y-%m-%d")
-	if (Enlistment_Claim_Date == today) then
-		Main.Experts.enlistPending = false
-		expertsLogMessage(string.format("Experts: Enlistment already claimed today%s", context))
-		return
-	end
-	Main.Experts.enlistPending = true
-	Main.Experts.enlistCooldown = 0
-	Main.Experts.enlistTimer = Main.Experts.enlistTimer or Timer()
-	Main.Experts.enlistTimer:set()
-	expertsLogMessage(string.format("Experts: Enlistment claim queued%s", context))
-end
-
-local function isForegroundGameLost()
-	usePreviousSnap(false)
-	local homeHit = SearchImageNew("Home Screen.png", Home_Screen_Region, 0.9, true)
-	if not(homeHit.name) then return false end
-
-	-- Avoid reopening if we’re still inside the game and the match is a false positive.
-	usePreviousSnap(false)
-	local cityVisible = SearchImageNew("City.png", Lower_Most_Half, 0.9, true).name
-	local worldVisible = SearchImageNew("World.png", Lower_Most_Half, 0.9, true).name
-	local allianceVisible = SearchImageNew("Alliance.png", nil, 0.9, true).name
-	if cityVisible or worldVisible or allianceVisible then
-		local now = os.time()
-		if (now - lastHomeScreenSkipLog) >= 60 then
-			Logger("Home Screen pattern matched but game UI is still present; skipping reopen")
-			lastHomeScreenSkipLog = now
-		end
-		return false
-	end
-
-	return true
-end
 
 local RSS_Gathering = {Meat = 1, Wood = 2, Coal = 3, Iron = 4, Extra = 5}
 local Bear_Checker_Trigger = true
@@ -209,27 +102,6 @@ local Rally_Troop_ROI
 
 local Time_List = {31, 61, 91, 152, 302, 602, 1201, 1800, 2701, 3602, 4322, 6482, 7201}
 local Claim_Rewards_Initial_Timer
-
-local Agnes_Claimed_Date = nil
-
-local function AgnesWasClaimedToday()
-    local today = os.date("%Y-%m-%d")
-    if Agnes_Claimed_Date == today then
-        return true
-    end
-    if Agnes_Claimed_Date and Agnes_Claimed_Date ~= today then
-        Agnes_Claimed_Date = nil
-    end
-    return false
-end
-
-local function MarkAgnesClaimed()
-    Agnes_Claimed_Date = os.date("%Y-%m-%d")
-end
-
-local function ResetAgnesClaim()
-    Agnes_Claimed_Date = nil
-end
 
 local rallyTeamCharTable = { {target = "charOCR/Rally Team/0.png", char = "0"},
 						{target = "charOCR/Rally Team/1.png", char = "1"},
@@ -398,9 +270,7 @@ function Main_GUI(version)
 	addTextView("    Option")
 	addSpinnerIndex("Auto_Gather_Option", {"1", "2"}, 1)
 	newRow()
-	addCheckBox("Enable_Experts", "Experts", false)
 	addCheckBox("Exploration_Enabled", "Exploration", false)
-	newRow()
 	addCheckBox("Auto_Nomadic_Merchant", "Nomadic Merchant", false)
 	addSpinner("Discounted", {"All RSS", "Discount", "Select"}, "All RSS")
 	addSeparator()
@@ -479,7 +349,7 @@ function Main_GUI(version)
 		addSpinner("Volume_UP_Command", {"Auto Attack", "Gather Rss", "Intel", "Sleep", "Stop"}, "Auto Attack")
 		addCheckBox("Volume_DOWN", "V. Down", false)
 		addSpinner("Volume_DOWN_Command", {"Auto Attack", "Gather Rss", "Intel", "Sleep", "Stop"}, "Auto Attack")
-		if (getUserID() == "zombrox@pm.me") then
+		if (getUserID() == "keefflemiranda@gmail.com") then
 			newRow()
 			--addCheckBox("Send_Report_GUI", "Send Report", false)
 			addTextView(" Starting Account")
@@ -602,7 +472,7 @@ function AutoAttack_GUI()
 	if (Attack_Type == "Beasts") then
 		addEditNumber("Beasts_Req_Lv", 1)
 	elseif (Attack_Type == "Polar Terror") then
-		addSpinnerIndex("Polar_Req_Lv", {"1", "2", "3", "4", "5", "6", "7", "8"}, 8)
+		addSpinnerIndex("Polar_Req_Lv", {"1", "2", "3", "4", "5", "6", "7"}, 7)
 	end
 	addTextView("Flag")
 	addSpinner("Flag_Req", {"0", "1", "2", "3", "4", "5", "6", "7", "8"}, 1)
@@ -633,7 +503,7 @@ function AutoAttack_GUI()
 	addCheckBox("resetAttackLimit", "Reset Limit", false)
 	newRow()
 	addSeparator()
-	if (getUserID() == "zombrox@pm.me") then
+	if (getUserID() == "keefflemiranda@gmail.com") then
 		addTextView("  Prioritize Events")
 		newRow()
 		addCheckBox("Auto_Merc_Prestige", "Mercenary Prestige", false)
@@ -782,7 +652,7 @@ function CityEvents_GUI()
 	addSpinner("Arena_Now_later", {"Now", "Later"}, "Now")
 	addTextView(" *")
 	addTextView("  Arena Time")
-	addEditText("Arena_Time", "23:50")
+	addEditText("Arena_Time", "00:01")
 	newRow()
 	addTextView("  Arena Daily Purchase")
 	addSpinner("mainArenaGems", {"0", "1", "2", "3", "4", "5"}, 0)
@@ -1031,78 +901,6 @@ function Nomadic_Merchant_GUI()
 	if (nomadicGems) and (nomadicGemsList == "") then scriptExit("You left Gems List Empty. Write 'All' if you want to buy all gems item or Write 'VIP, Random Teleport' if you want specific items only.") end
 end
 
-function Experts_GUI()
-	dialogInit()
-	newRow()
-	addTextView("Manual Expert Controls")
-	newRow()
-	addCheckBox("Experts_Claim_Marksmen", "Claim Marksmen", false)
-	newRow()
-	addCheckBox("Experts_Dawn_Academy", "Dawn Academy", false)
-	newRow()
-	addCheckBox("Experts_Enlistment_Claim", "Enlistment Claim", false)
-	newRow()
-	addEditNumber("Experts_Dawn_Timer", 120)
-	addTextView(" minutes between Trek Supply checks (min 15)")
-	newRow()
-	addTextView("Check to queue the expert marksman routine once.")
-	newRow()
-	addTextView("Dawn Academy (Trek Supplies) runs on a repeating timer when enabled.")
-	newRow()
-	addTextView("Enlistment Claim runs automatically after the daily reset.")
-	dialogShowFullScreen("Experts")
-	Main.Experts.enabled = true
-	Main.Experts.request = Experts_Claim_Marksmen or false
-	Main.Experts.dawnEnabled = Experts_Dawn_Academy or false
-	Main.Experts.enlistEnabled = Experts_Enlistment_Claim or false
-	if (Main.Experts.request) then
-		if (Label_Region) then Logger("Experts: Claim Marksmen queued") else print("Experts: Claim Marksmen queued") end
-	else
-		if (Label_Region) then Logger("Experts: no manual actions queued") else print("Experts: no manual actions queued") end
-	end
-	if (Main.Experts.dawnEnabled) then
-		Main.Experts.dawnNeedsImmediateCheck = shouldTriggerImmediateDawnAcademy()
-		local dawnTimerMinutes = tonumber(Experts_Dawn_Timer) or 0
-		if dawnTimerMinutes <= 0 then dawnTimerMinutes = 120 end
-		dawnTimerMinutes = math.max(15, dawnTimerMinutes)
-		Main.Experts.dawnInterval = dawnTimerMinutes * 60
-		if not (Main.Experts.dawnTimer) then Main.Experts.dawnTimer = Timer() end
-		Main.Experts.dawnTimer:set()
-		if (Main.Experts.dawnNeedsImmediateCheck) then
-			Main.Experts.dawnCooldown = 0
-			expertsLogMessage("Experts: Dawn Academy immediate check queued to verify trek claim status")
-		else
-			Main.Experts.dawnCooldown = Main.Experts.dawnInterval
-			local nextRunUTC = formatUTCRelative(Main.Experts.dawnCooldown)
-			local logMsg = string.format("Experts: Dawn Academy scheduled in %d minutes (%s UTC)", dawnTimerMinutes, nextRunUTC)
-			if (Label_Region) then Logger(logMsg) else print(logMsg) end
-			expertsLogMessage(logMsg)
-		end
-	else
-		Main.Experts.dawnTimer = nil
-		Main.Experts.dawnCooldown = 0
-		Main.Experts.dawnNeedsImmediateCheck = false
-		Main.Experts.dawnInterval = 0
-		if (Label_Region) then
-			Logger("Experts: Dawn Academy disabled")
-		else
-			print("Experts: Dawn Academy disabled")
-		end
-	end
-	if (Main.Experts.enlistEnabled) then
-		scheduleEnlistmentClaim(" (via Experts menu)")
-	else
-		Main.Experts.enlistPending = false
-		Main.Experts.enlistTimer = nil
-		Main.Experts.enlistCooldown = 0
-		if (Label_Region) then
-			Logger("Experts: Enlistment claim disabled")
-		else
-			print("Experts: Enlistment claim disabled")
-		end
-	end
-end
-
 function ALT_GUI()
 	dialogInit()
 	newRow()
@@ -1242,10 +1040,6 @@ function Logger(message)
             local log_message = string.format("[%s] %s - %s", current_time, CHARACTER_ACCOUNT, message)
             --table.insert(Logs, log_message)
 			txtLogs = txtLogs .. log_message .. "\n"
-			if #txtLogs >= 50000 then
-				File_Writer("Error Screenshot/Logs", txtLogs)
-				txtLogs = ""
-			end
         end
     end
 
@@ -1291,13 +1085,6 @@ end
 function Reset_Daily_Events()
 	Logger("Reset Daily Events Started")
 	Current_Date = os.date("%Y-%m-%d")
-	ResetAgnesClaim()
-	Logger("Agnes intel claim tracker reset")
-	if (Main.Experts.enlistEnabled) then
-		Enlistment_Claim_Date = "NA"
-		preferencePutString("expertsEnlistmentDate", "NA")
-		scheduleEnlistmentClaim(" (after reset)")
-	end
 	if (Pet_Adventure) then
 		Logger("Refreshing Pet Adventure")
 		Main.Pet_Adventure.timer:set()
@@ -1544,69 +1331,6 @@ local function getUTCOffset()
     if localTime.day > utcTime.day then offset = offset + 24
     elseif localTime.day < utcTime.day then offset = offset - 24 end
     return offset
-end
-
-local Dawn_Academy_UTC_TIMES = {
-	{hour = 8, min = 1, sec = 0},
-	{hour = 16, min = 1, sec = 0},
-}
-
-local function secondsUntilNextUTCEvent(timeList, now)
-	now = now or os.time()
-	local utcNow = os.date("!*t", now)
-	local currentSeconds = (utcNow.hour * 3600) + (utcNow.min * 60) + utcNow.sec
-	local secondsInDay = 86400
-	local nextDelta = secondsInDay
-
-	for _, t in ipairs(timeList) do
-		local targetSeconds = (t.hour * 3600) + (t.min * 60) + (t.sec or 0)
-		local delta = targetSeconds - currentSeconds
-		if (delta < 0) then delta = delta + secondsInDay end
-		if (delta < nextDelta) then nextDelta = delta end
-	end
-
-	return nextDelta
-end
-
-local function secondsSinceMostRecentUTCEvent(timeList, now)
-	now = now or os.time()
-	local utcNow = os.date("!*t", now)
-	local currentSeconds = (utcNow.hour * 3600) + (utcNow.min * 60) + utcNow.sec
-	local secondsInDay = 86400
-	local lastDelta = secondsInDay
-
-	for _, t in ipairs(timeList) do
-		local targetSeconds = (t.hour * 3600) + (t.min * 60) + (t.sec or 0)
-		local delta = currentSeconds - targetSeconds
-		if (delta < 0) then delta = delta + secondsInDay end
-		if (delta < lastDelta) then lastDelta = delta end
-	end
-
-	return lastDelta
-end
-
-function getNextDawnAcademyCooldown(now)
-	return secondsUntilNextUTCEvent(Dawn_Academy_UTC_TIMES, now)
-end
-
-function getLastDawnAcademyEventTimestamp(now)
-	now = now or os.time()
-	local sinceLast = secondsSinceMostRecentUTCEvent(Dawn_Academy_UTC_TIMES, now)
-	return now - sinceLast
-end
-
-shouldTriggerImmediateDawnAcademy = function(now)
-	local lastClaim = getDawnAcademyLastClaim()
-	if not lastClaim then
-		return true
-	end
-	local lastEvent = getLastDawnAcademyEventTimestamp(now)
-	return lastClaim < lastEvent
-end
-
-function formatUTCRelative(secondsFromNow, reference)
-	reference = reference or os.time()
-	return os.date("!%Y-%m-%d %H:%M:%S", reference + secondsFromNow)
 end
 
 function subtractHoursFromTime(timeStr, hoursToSubtract)
@@ -1985,104 +1709,14 @@ function Add_Subtract_Time(Time, value, Return_Type)
 	return {s = total_seconds, t = adjusted_time}
 end
 
--- === Flags Discovery (auto) ===============================================
--- Scans Flags/ for files named Flag<number>.png and records on-screen coords.
--- Populates global flags_coordinates[i] = { f=cur_flag, t=0, ft=0 }
--- Options:
---   opts = {
---     dir = "Flags",           -- image folder
---     prefix = "Flag",         -- filename prefix
---     ext = ".png",            -- extension
---     region = Upper_Half,     -- search ROI
---     conf = 0.90,             -- confidence
---     retries = 1,             -- attempts per flag
---     retry_wait = 0.15,       -- seconds between retries
---     log_each = true          -- per-flag logs
---   }
---
--- Dependencies: Logger, SearchImageNew, scandirNew, wait, Timer (already present in your script)
-
-function Discover_Flags_Coordinates(opts)
-    opts = opts or {}
-    local dir        = opts.dir        or "Flags"
-    local prefix     = opts.prefix     or "Flag"
-    local ext        = opts.ext        or ".png"
-    local region     = opts.region     or Upper_Half
-    local conf       = opts.conf       or 0.85
-    local retries    = opts.retries    or 1
-    local retry_wait = opts.retry_wait or 0.15
-    local log_each   = (opts.log_each ~= false)
-
-    -- discover candidate files -> numeric indices
-    local indices = {}
-    local files = scandirNew(dir)
-    for _, f in ipairs(files) do
-        local n = string.match(f, "^" .. prefix .. "(%d+)" .. ext:gsub("%.", "%%.") .. "$")
-        if n then table.insert(indices, tonumber(n)) end
-    end
-    table.sort(indices)
-    if #indices == 0 then
-        Logger(string.format("No %s%s%s found in '%s'", prefix, "<n>", ext, dir))
-        return 0, flags_coordinates
-    end
-
-    -- ensure table exists and clear stale entries for discovered indices only
-    if flags_coordinates == nil then flags_coordinates = {} end
-    for _, i in ipairs(indices) do flags_coordinates[i] = nil end
-
-    local t0 = os.clock()
-    local found = 0
-    Logger(string.format("Flags: scanning %d candidates @ conf=%.2f in %s", #indices, conf, tostring(region)))
-
-    for _, i in ipairs(indices) do
-        local path = string.format("%s/%s%d%s", dir, prefix, i, ext)
-        local hit = nil
-        for attempt = 1, math.max(1, retries) do
-            hit = SearchImageNew(path, region, conf, true)
-            if hit and hit.name then break end
-            if attempt < retries then wait(retry_wait) end
-        end
-
-        if hit and hit.name then
-            flags_coordinates[i] = { f = hit, t = 0, ft = 0 }  -- keep your schema
-            found = found + 1
-            if log_each then
-                Logger(string.format("[✓] Flag %d @ (%d,%d) -> %s", i, hit.xy.x, hit.xy.y, path))
-            end
-        else
-            if log_each then
-                Logger(string.format("[ ] Flag %d not found -> %s", i, path))
-            end
-        end
-    end
-
-    local ms = (os.clock() - t0) * 1000
-    Logger(string.format("Flags discovery complete: %d/%d found in %.1f ms", found, #indices, ms))
-    return found, flags_coordinates
+function Get_Flags_Coordinates()
+	Logger()
+	for i = 1, 8 do
+		cur_flag = SearchImageNew(string.format("Flags/Flag%s.png", i), Upper_Half, 0.95, true)
+		if (cur_flag.name) then flags_coordinates[i] = {f=cur_flag, t=0, ft=0} end
+	end
+	Logger("Flags Coordinates Taken")
 end
-
--- Optional: a tiny GUI to run discovery with knobs (match your dialog style)
-function Flags_Discovery_GUI()
-    dialogInit()
-    addTextView("Flags Discovery")
-    newRow()
-    addTextView("Confidence")
-    addEditNumber("flagsConf", 90)        -- percent
-    addTextView("Retries")
-    addEditNumber("flagsRetries", 1)
-    newRow()
-    addCheckBox("flagsLogEach", "Verbose per-flag logs", true)
-    dialogShowFullScreen("Flags")
-
-    local conf = (tonumber(flagsConf) or 90) / 100
-    local retries = tonumber(flagsRetries) or 1
-    Discover_Flags_Coordinates({
-        conf = conf,
-        retries = retries,
-        log_each = flagsLogEach
-    })
-end
-
 
 
 function get_file_name(file)
@@ -2133,11 +1767,11 @@ function SingleImageWait(target, waitTime, boxRegion, Similarity, Color, Mask)
 end
 
 function SearchImageNew(target, boxRegion, maxScore, Color, Mask, Time)
-        if (target.target) then boxRegion, maxScore, Color, Mask, Time, target = target.region, target.score, target.color, target.mask, target.ttime, target.target end
-        Time, Color, Mask, maxScore = Time or 0, Color or false, Mask or false, maxScore or 0.9
-        local TImage = target
-        if not (typeOf(target) == "table") then TImage = {target} end
-        local result = {x = nil, y = nil, xy = nil, name = nil, score=maxScore}
+	if (target.target) then boxRegion, maxScore, Color, Mask, Time, target = target.region, target.score, target.color, target.mask, target.ttime, target.target end
+	Time, Color, Mask, maxScore = Time or 0, Color or false, Mask or false, maxScore or 0.9
+	local TImage = target
+	if not (typeOf(target) == "table") then TImage = {target} end
+	local result = {x = nil, y = nil, xy = nil, name = nil, score=maxScore}
 	local Search_Timer = Timer()
 	repeat
 		for i, t in ipairs(TImage) do
@@ -2162,40 +1796,6 @@ function SearchImageNew(target, boxRegion, maxScore, Color, Mask, Time)
 	Search_Timer = nil
 	target, boxRegion, maxScore, Color, Mask, Time = nil, nil, nil, nil, nil, nil
     return result
-end
-
-function tapSearchResult(result, clickType)
-        if not result then return false end
-        local target = result.xy or result.loc
-        if target then
-                Press(target, clickType)
-                return true
-        end
-        return false
-end
-
-function ClickImg(image, region, score, color, mask, waitTime)
-        score = score or 0.9
-        local searchResult = SearchImageNew(image, region, score, color, mask, waitTime)
-        if (searchResult and searchResult.xy) then
-                Press(searchResult.xy, 1)
-		return true, searchResult
-	end
-	return false, searchResult
-end
-
-function WaitExists(image, timeout, region, score, color, mask)
-	timeout = timeout or 0
-	score = score or 0.9
-	local timer = Timer()
-	repeat
-		local result = SearchImageNew(image, region, score, color, mask, 0)
-		if (result and result.name) then
-			return true, result
-		end
-		wait(0.2)
-	until(timer:check() >= timeout)
-	return false
 end
 
 function testClick()
@@ -2916,47 +2516,40 @@ function Auto_Beast(Deploy_Btn, attackType, flagReq, useHero, useCounter)
 		return Use_All_Timer
 	end
 	----------- Search for Gina --------------------
-	local Hero_List = {}
+	local continue_flag, Hero_List = true, {}
 	if (useHero) then
 		if (Hero_Type == "Both") then Hero_List = {"Gina.png", "Bokan.png"}
 		else Hero_List = {string.format("%s.png", Hero_Type)} end
 	end
 	
 	if (useHero) and not(Use_All) then
-		Logger("Checking for required HERO")
+		Logger("Checking for Required HERO")
 		local Hero_Found = 0
-		for _, Cur_Hero in ipairs(Hero_List) do
-			local Hero_Status = SearchImageNew(Cur_Hero, Upper_Half, 0.85, true, false, 2)
-			if (Hero_Status and Hero_Status.name) then
-				Hero_Found = Hero_Found + 1
-			end
+		for i, Cur_Hero in ipairs(Hero_List) do
+			local Hero_Status = SearchImageNew(Cur_Hero, Upper_Half, 0.85, true, false)
+			if (Hero_Status.name) then Hero_Found = Hero_Found + 1 end
 		end
-		if not(Hero_Found == table.getn(Hero_List)) then
-			Logger("Required HERO is not found. Sleeping for 60 Seconds")
-			Go_Back("Waiting for hero")
-			return 60
-		end
+		if (Hero_Found == table.getn(Hero_List)) then continue_flag = false end
 	end
-
-	if flagReq ~= "0" then
-		Logger(string.format("Selecting Flag %s", flagReq))
-		local flagROI = Region(0, math.floor(screen.y * 0.55), screen.x, math.floor(screen.y * 0.25))
-		local Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), flagROI, 0.85, true, false, 3)
-		if not (Troop_Flag and Troop_Flag.xy) then
-			Logger("Flag not found in primary ROI; recalculating coordinates")
-			Get_Flags_Coordinates()
-			Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), nil, 0.85, true, false, 3)
-		end
-		if Troop_Flag and Troop_Flag.xy then
-			if Troop_Flag.r and Troop_Flag.r.highlight then Troop_Flag.r:highlight(1) end
-			click(Troop_Flag.xy)
-			wait(0.2)
-			click(Troop_Flag.xy)
-			wait(0.2)
-			if Troop_Flag.r and Troop_Flag.r.highlightOff then Troop_Flag.r:highlightOff() end
-			Logger(string.format("Flag %s tapped", flagReq))
-		else
-			Logger(string.format("Requested flag %s could not be located; leaving flag unchanged", flagReq))
+	
+	local Troop_Flag
+	if (continue_flag) and not(flagReq == "0") then
+		Logger()
+		if not(Troop_Flag) then Troop_Flag = SearchImageNew(string.format("Flags/Flag%s.png", flagReq), Upper_Half, 0.9, true, false, 9999999) end
+		--PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Troop_Flag.r, 0.9, false, true)
+		PressRepeatNew(Troop_Flag.xy, "Flag Selected.png", 1, 2, nil, Region(Troop_Flag.sx - 27, Troop_Flag.sy - 20, 53, 46), 0.9, false, true)
+		Logger(string.format("Flag Selected: %s", flagReq))
+		if (useHero) then
+			Logger("Checking for required HERO")
+			local Hero_Found = 0
+			for i, Cur_Hero in ipairs(Hero_List) do
+				local Hero_Status = SearchImageNew(Cur_Hero, Upper_Half, 0.85, true, false)
+				if (Hero_Status.name) then Hero_Found = Hero_Found + 1 end
+			end
+			if not(Hero_Found == table.getn(Hero_List)) then
+				Go_Back("Required HERO is not found. Sleeping for 60 Seconds")
+				return 60
+			end
 		end
 	end
 	
@@ -3929,43 +3522,11 @@ function Auto_Reconnect_fn()
 	for i, v in ipairs({"World.png", "City.png"}) do table.insert(Pack_Sale, v) end
 	Recon_Screen_Timer = Timer()
 	Logger("Checking Reconnect Screen Type!")
-	repeat
-		usePreviousSnap(false)
-		Recon_Screen = SearchImageNew({"Duplicate Login.png", "Connection Lost.png"}, nil, 0.85, true)
-	until(Recon_Screen.name) or (Recon_Screen_Timer:check() > 5)
+	repeat Recon_Screen = SearchImageNew({"Duplicate Login.png", "Connection Lost.png"}, nil, 0.85, true) until(Recon_Screen.name) or (Recon_Screen_Timer:check() > 5)
 	if (Recon_Screen.name == "Duplicate Login") then Sleep_Iter(Auto_Reconnect_Timer * 60) end
 	Logger("Clicking Reconnect")
-	local attempt, Home_Screen_Status = 0, nil
-	local fallbackX = math.floor(screen.x * 0.75)
-	local fallbackY = math.floor(screen.y * 0.80)
-	repeat
-		attempt = attempt + 1
-		usePreviousSnap(false)
-		local reconnectBtn = SearchImageNew("Reconnect.png", Lower_Half, 0.82, true, false, 3)
-		if (reconnectBtn and reconnectBtn.name) then
-			Logger(string.format("Reconnect attempt %d using image %s", attempt, reconnectBtn.name))
-			Press(reconnectBtn.xy, 1)
-		else
-			Logger(string.format("Reconnect attempt %d using fallback tap (%d,%d)", attempt, fallbackX, fallbackY))
-			Press(Location(fallbackX, fallbackY), 1)
-		end
-		wait(2)
-		usePreviousSnap(false)
-		Home_Screen_Status = SearchImageNew(Pack_Sale, nil, 0.9, false)
-	until(Home_Screen_Status and Home_Screen_Status.name and not string.match(Home_Screen_Status.name, "Reconnect")) or (attempt >= 3)
+	local Home_Screen_Status = PressRepeatNew("Reconnect.png", Pack_Sale, 1, 2, nil, Lower_Half, 0.8, true, true)
 	Sleep_Iter(5)
-	usePreviousSnap(false)
-	if not(Home_Screen_Status and Home_Screen_Status.name) then
-		Home_Screen_Status = SearchImageNew(Pack_Sale, nil, 0.9, false)
-	end
-	if (Home_Screen_Status and Home_Screen_Status.name and string.match(Home_Screen_Status.name, "Reconnect")) then
-		Logger("Reconnect prompt persists after multiple attempts; will retry on next loop")
-		return
-	end
-	if not(Home_Screen_Status and Home_Screen_Status.name) then
-		Logger("Reconnect: unable to verify post-click state; will retry on next loop")
-		return
-	end
 
 	if (string.match(Home_Screen_Status.name, "Pack Sale")) then 
 		Logger("Pack Sale Found and Closing")
@@ -4077,31 +3638,17 @@ function AMQ()
 	local AM_Quests = {[1] = {status = true, loc = Location(200, 612)}, [2] = {status = true, loc = Location(519, 612)}}
 	local Task_Status, skipChecker = {[1] = "", [2] = ""}, false
 	local hexLegend = {["#A69169"] = "Refreshing", ["#F8AA45"] = "Available", ["#FFE7AC"] = "Selected", ["#7F5523"] = "Completed"}
-	local refreshPatterns = {"AM Refresh Mission.png", "Alliance Mobilization/am copy/AM Refresh Mission.png"}
-	local refreshConfirmPatterns = {"AM Refresh.png", "Alliance Mobilization/am copy/AM Refresh.png"}
-	local acceptButtonPatterns = {"AM Accept.png", "Alliance Mobilization/am copy/AM Accept.png"}
-	local buyPatterns = {"Alliance Mobilization/Buy.png", "Alliance Mobilization/am copy/Buy.png"}
-	local fullPatterns = {"AM Full.png", "Alliance Mobilization/am copy/AM Full.png"}
-	local attemptsPatterns = {"Attempts.png", "Alliance Mobilization/am copy/Attempts.png"}
-	local questPercentPatterns = {"Alliance Mobilization/AM 120%.png", "Alliance Mobilization/AM 200%.png",
-		"Alliance Mobilization/am copy/AM 120%.png", "Alliance Mobilization/am copy/AM 200%.png"}
-	local refreshTimePatterns = {"Alliance Mobilization/2 Mins.png", "Alliance Mobilization/5 Mins.png",
-		"Alliance Mobilization/am copy/2 Mins.png", "Alliance Mobilization/am copy/5 Mins.png"}
-
 	local Minimum_Time = 600
 	local AM_TblPreference = parseStringToTable(preferenceGetString("AM_StrPreference", '1-"task=NA,time=120,count=0,expiresAt=0"|2-"task=NA,time=120,count=0,expiresAt=0"'))
 	for curExclusive, curExclusivePref in pairs(AM_TblPreference) do
 		curExclusive = tonumber(curExclusive)
 		if (curExclusivePref.count and curExclusivePref.count <= 2) and (curExclusivePref.expiresAt and curExclusivePref.expiresAt <= os.time()) then
 			Logger("Checking Exclusive: " ..curExclusive)
-			if Main.AM.Exclusive[curExclusive] and Main.AM.Exclusive[curExclusive].highlight then
-				Main.AM.Exclusive[curExclusive]:highlight()
-			end
+			Main.AM.Exclusive[curExclusive]:highlight()
 			local hexResult = multiHexColorFind(AM_Quests[curExclusive].loc, {"#A69169", "#F8AA45", "#FFE7AC", "#7F5523"}, 10)
-			Logger("Exclusive Hex: " .. hexResult)
-			if Main.AM.Exclusive[curExclusive] and Main.AM.Exclusive[curExclusive].highlightOff then
-				Main.AM.Exclusive[curExclusive]:highlightOff()
-			end
+
+			Logger("Exclusive Hex: " ..hexResult)
+			Main.AM.Exclusive[curExclusive]:highlightOff()
 			if (hexLegend[hexResult] == "Refreshing") then --Refreshing
 				curExclusivePref.task, skipChecker = "Refreshing", false
 			elseif (hexLegend[hexResult] == "Selected") then-- Active Selected
@@ -4112,29 +3659,17 @@ function AMQ()
 				curExclusivePref.task, skipChecker = "Refreshing", false
 			elseif (hexLegend[hexResult] == "Available") then-- Available -- To Refresh
 				skipChecker = false
-				local wantedQuest = SearchImageNew(Main.AM.reqList, Main.AM.Exclusive[curExclusive], 0.85)
-				if (wantedQuest and wantedQuest.name) then --Search if your wanted quest is found
-					Logger("Wanted quest detected: " .. tostring(wantedQuest.name))
-					if wantedQuest.r and wantedQuest.r.highlight then wantedQuest.r:highlight(1) end
+				if (SearchImageNew(Main.AM.reqList, Main.AM.Exclusive[curExclusive], 0.9).name) then --Search if your wanted quest is found
 					Logger("Percentage Selected: ".. Percentage_Status)
 					if (Percentage_Status == "Any") then curExclusivePref.task = "Accept"
 					else
 						Logger("Searching Current Quest Percentage")
-						local Percentage_Found = SearchImageNew(questPercentPatterns, Main.AM.Exclusive[curExclusive], 0.85)
-						if Percentage_Found and Percentage_Found.name then
-							local Percentage_Final = Percentage_Found.name:gsub("AM ", "")
-							Logger("Quest Percent Found: " ..Percentage_Final)
-							if (Percentage_Status == Percentage_Final) then curExclusivePref.task = "Accept" else curExclusivePref.task = "Refresh" end
-						else
-							Logger("Quest percentage badge not found; deferring to refresh")
-							curExclusivePref.task = "Refresh"
-						end
+						local Percentage_Found = SearchImageNew({"Alliance Mobilization/AM 120%.png", "Alliance Mobilization/AM 200%.png"}, Main.AM.Exclusive[i], 0.9)	
+						local Percentage_Final = Percentage_Found.name:gsub("AM ", "")
+						Logger("Quest Percent Found: " ..Percentage_Final)
+						if (Percentage_Status == Percentage_Final) then curExclusivePref.task = "Accept" else curExclusivePref.task = "Refresh" end
 					end
-					if wantedQuest.r and wantedQuest.r.highlightOff then wantedQuest.r:highlightOff() end
-				else 
-					Logger("Desired quest not present; scheduling refresh")
-					curExclusivePref.task = "Refresh" 
-				end
+				else curExclusivePref.task = "Refresh" end
 			end
 
 			if (curExclusivePref.task == "Refreshing") then
@@ -4155,14 +3690,10 @@ function AMQ()
 					Logger(string.format("Quest Points: %s | Min Points: %s", currentQuestPoints, Min_Points))
 					if (AM_Accept) and (AM_Quests[curExclusive].status) then
 						Logger("Accepting Quest")
-						PressRepeatNew(Main.AM.Exclusive[curExclusive], acceptButtonPatterns, 1, 2, false, false, 0.9, false, true)
-						local acceptResult = PressRepeatNew(acceptButtonPatterns, {
-							"AM Full.png", "Alliance Mobilization/am copy/AM Full.png",
-							"Attempts.png", "Alliance Mobilization/am copy/Attempts.png",
-							"Alliance Mobilization/Buy.png", "Alliance Mobilization/am copy/Buy.png"
-						}, 1, 2, false, false, 0.9, true, true)
+						PressRepeatNew(Main.AM.Exclusive[curExclusive], "AM Accept.png", 1, 2, false, false, 0.9, false, true)
+						local acceptResult = PressRepeatNew("AM Accept.png", {"AM Full.png", "Attempts.png", "Alliance Mobilization/Buy.png"}, 1, 2, false, false, 0.9, true, true)
 						Logger("Quest Result: " ..acceptResult.name)
-						if (acceptResult.name == "Buy" or acceptResult.name == "Alliance Mobilization/am copy/Buy") then
+						if (acceptResult.name == "Buy") then
 							if (AM_Gems) then
 								Logger("Buying Additional Attempts")
 								PressRepeatHexColor(Location(362, 884), Location(278, 564), {"#22588C"}, 5, 3) --clicking Buy
@@ -4185,12 +3716,12 @@ function AMQ()
 			
 			if (curExclusivePref.task == "Refresh") then 
 				Logger("Refreshing Quest")
-				PressRepeatNew(Main.AM.Exclusive[curExclusive], refreshPatterns, 1, 2, false, false, 0.9, false, true)
-				PressRepeatNew(refreshPatterns, refreshConfirmPatterns, 1, 2, false, false, 0.9, true, true)
-				local refreshingTime = SearchImageNew(refreshTimePatterns, nil, 0.9, true, false, 9999999)
-				PressRepeatNew(refreshConfirmPatterns, attemptsPatterns, 1, 2, false, false, 0.9, true, true)
+				PressRepeatNew(Main.AM.Exclusive[curExclusive], "AM Refresh Mission.png", 1, 2, false, false, 0.9, false, true) --- ERROR
+				PressRepeatNew("AM Refresh Mission.png", "AM Refresh.png", 1, 2, false, false, 0.9, true, true)
+				local refreshingTime = SearchImageNew({"Alliance Mobilization/2 Mins.png", "Alliance Mobilization/5 Mins.png"}, nil, 0.9, true, false, 9999999)
+				PressRepeatNew("AM Refresh.png", "Attempts.png", 1, 2, false, false, 0.9, true, true)
 				Minimum_Time = 120
-				if refreshingTime and refreshingTime.name and refreshingTime.name:find("5") then 
+				if (refreshingTime.name == "5 Mins") then 
 					Minimum_Time, curExclusivePref.count = 300, 1
 				end
 			end
@@ -4220,71 +3751,51 @@ function Alliance_Mobilization()
 		Logger("Events screen not found")
 		return 10
 	end
-
-	local amLogoPatterns = {"AM Logo.png", "Alliance Mobilization/am copy/AM Logo.png", "Alliance Mobilization/am copy/AM Logo1.png"}
-	local amScreenPatterns = {"Alliance Mobilization.png", "Alliance Mobilization/am copy/Alliance Mobilization.png"}
-
+	
 	local AM_Completed, Current_Events = false
 	Logger("Checking for Alliance Mobilization Screen")
-	if not(SearchImageNew(amScreenPatterns, Upper_Half, 0.9, true).name) then
+	if not(SearchImageNew("Alliance Mobilization.png", Upper_Half, 0.9, true).name) then
 		Logger("Pressing Events")
 		PressRepeatNew(Events_Logo.xy, "Events.png", 1, 2, Upper_Half, Upper_Half, 0.9, true, true)
 		Logger("Searching for Alliance Mobilization")
 		local Alliance_Mob, All_Events = nil, {}
-		Alliance_Mob = SearchImageNew(amLogoPatterns, Upper_Half, 0.9, true)
+		Alliance_Mob = SearchImageNew("AM Logo.png", Upper_Half, 0.9, true)
 		if not(Alliance_Mob.name) then
-			local Events_Folder = "Events/"
-			for _, event in ipairs(scandirNew(Events_Folder)) do
-				table.insert(All_Events, Events_Folder .. event)
-			end
+			local Events_Folder, Current_Event = "Events/", nil
+			for i, event in ipairs(scandirNew(Events_Folder)) do table.insert(All_Events, Events_Folder.. event) end
 			local Location_1_X, Location_1_Y = Location(ranNumbers(360, 10), 143), Location(360 + 150, 143)
 			local Location_2_X, Location_2_Y = Location(ranNumbers(360, 10), 143), Location(360 - 150, 143)
 			local Final_Loc1, Final_Loc2 = Location_1_X, Location_1_Y
-			local swipeAttempts, swipeLimit = 0, 12
 			Logger("Swiping and Looking for Alliance Mobilization")
-			repeat
-				swipeAttempts = swipeAttempts + 1
+			repeat	
 				local xCurrent, xStart = {350, 360, 370}, 360
 				for i = 1, 3 do
 					if not(isColorWithinThresholdHex(Location(xCurrent[i], 143), "#111C40", 10)) then
 						xStart = xCurrent[i]
 						break
 					end
-				end
+				end		
 				swipe(Location(xStart, 143), Final_Loc2, .8)
 				wait(1)
-				Alliance_Mob = SearchImageNew(amLogoPatterns, Upper_Half, 0.9, true)
-				if (SearchImageNew("Events/Calendar.png", Upper_Half, 0.9, true).name) then
+				Alliance_Mob = SearchImageNew("AM Logo.png", Upper_Half, 0.9, true)
+				if (SearchImageNew("Events/Calendar.png", Upper_Half, 0.9, true).name) then 
 					Logger("Calendar Found Swiping Right")
-					Final_Loc1, Final_Loc2 = Location_2_X, Location_2_Y
+					Final_Loc1, Final_Loc2 = Location_2_X, Location_2_Y 
 				end
-				if (Final_Loc2 == Location_2_Y) and (SearchImageNew("Events/Community.png", Upper_Right, 0.9, true).name) then
+				if (Final_Loc2 == Location_2_Y) and (SearchImageNew("Events/Community.png", Upper_Right, 0.9, true).name) then 
 					Logger("Community found")
 					Go_Back("Alliance Mobilization is Unavailable")
 					AM_Enabled = false
 					return 0
 				end
-			until(Alliance_Mob.name or swipeAttempts >= swipeLimit)
-
-			if not(Alliance_Mob and Alliance_Mob.name) then
-				Logger("Alliance Mobilization logo not found after swipes; exiting")
-				Go_Back("Alliance Mobilization not located")
-				AM_Enabled = false
-				return 0
-			end
+			until(Alliance_Mob.name)
 			Logger("Clicking Alliance Mobilization")
 		end
-		if Alliance_Mob and Alliance_Mob.xy then
-			if Alliance_Mob.r then Alliance_Mob.r:highlight(1) end
-			click(Alliance_Mob.xy)
-			wait(0.3)
-			if Alliance_Mob.r then Alliance_Mob.r:highlightOff() end
-		end
-		PressRepeatNew(amLogoPatterns, amScreenPatterns, 1, 2, Upper_Half, Upper_Half, 0.9, true, true)
+		PressRepeatNew("AM Logo.png", "Alliance Mobilization.png", 1, 2, Upper_Half, Upper_Half, 0.9, true, true)
 	end
-
+	
 	local AMStatus = SearchImageNew({"Alliance Mobilization/Clock 2.png", "Alliance Mobilization/Tally.png"}, Upper_Left, 0.9, true, false, 9999999)
-	if (AMStatus.name) and (AMStatus.name == "Tally") then
+	if (AMStatus.name) and (AMStatus.name == "Tally") then 
 		AM_Enabled = false
 		Go_Back("Alliance Mobilization Tally Stage")
 		return 0
@@ -4293,20 +3804,16 @@ function Alliance_Mobilization()
 		AM_Enabled = false
 		return 0
 	end
-
+	
 	local AM_Quests = {[1] = {status = true, loc = Location(200, 612)}, [2] = {status = true, loc = Location(519, 612)}}
 	local Complete_Trigger, Minimum_Time, AMQ_Folder = 0, 0, "Alliance Mobilization Quest/"
-	local plusRegion = Region(400, 511, 115, 70)
-	local plus = SingleImageWait("Alliance Mobilization/Plus.png", 999999999, plusRegion)
-	if plus then
-		plusRegion:highlight(1)
-		if (isColorWithinThresholdHex(Location(plus.x + 33, plus.y - 7), "#FF1E22", 5)) then
-			Logger("Red Dot Found and Claiming")
-			PressRepeatHexColor(plus, Location(434, 895), {"#25B756"}, 5, 2)
-			PressRepeatHexColor(Location(434, 895), Location(278, 564), {"#22588C"}, 5, 2)
-			Logger("Red Dot Claimed")
-		end
-		plusRegion:highlightOff()
+	
+	local plus = SingleImageWait("Alliance Mobilization/Plus.png", 999999999, Region(400, 511, 115, 70))
+	if (isColorWithinThresholdHex(Location(plus.x + 33, plus.y - 7), "#FF1E22", 5)) then
+		Logger("Red Dot Found and Claiming")
+		PressRepeatHexColor(plus, Location(434, 895), {"#25B756"}, 5, 2)
+		PressRepeatHexColor(Location(434, 895), Location(278, 564), {"#22588C"}, 5, 2)
+		Logger("Red Dot Claimed")
 	end
 	
 	Minimum_Time = AMQ()
@@ -4459,7 +3966,6 @@ function My_Island()
 	end
 	Logger("Searching for Life Essence")
 	local Essence_Timer = Timer()
-	local essenceClaimed = false
 	while true do
 		local Life_Essence = SearchImageNew("Island Life Essence.png", Region(0, 100, screen.x, screen.y), 0.9, true)
 		if (Life_Essence.name) then 
@@ -4467,13 +3973,9 @@ function My_Island()
 			Press(Life_Essence.xy, 1)
 			wait(1)
 			Essence_Timer:set()
-			essenceClaimed = true
 		else if (Essence_Timer:check() > 2) then break end end
 	end
-	if (essenceClaimed) then
-		Logger("Attempting to claim Daybreak freebie after essence")
-		Claim_Daybreak_Freebie()
-	end
+	
 	
 	if (find_in_list({"Island Treasure", "All"}, mainDaybreakIslandOption)) then	
 		Logger("Checking for Island Treasure")
@@ -4499,61 +4001,7 @@ function My_Island()
 	myIslandGoBack()
 	return Auto_My_Island_Timer
 end
-------free bee island starts here 
--- Scenario: After Daybreak Island claims essence, open Buy and grab the freebie, then go back.
-function Claim_Daybreak_Freebie()
-	Logger("Claim_Daybreak_Freebie: starting")
 
-	local buyBtn = SearchImageNew("buy.png", nil, 0.9, true, false, 4)
-	if not (buyBtn and buyBtn.xy) then
-		Logger("Claim_Daybreak_Freebie: buy.png not found - skipping freebie flow")
-		return false
-	end
-	Logger("Claim_Daybreak_Freebie: buy.png found, clicking")
-	Press(buyBtn.xy, 1)
-	wait(0.6)
-
-	Logger("Claim_Daybreak_Freebie: searching free Btn")
-	local freeFull = SearchImageNew("free.png", nil, 0.9, true, false, 4)
-	if not (freeFull and freeFull.xy) then
-		Logger("Claim_Daybreak_Freebie: free.png not found - returning to Island view")
-		local backBtn = SearchImageNew("trek/back.png", Upper_Half, 0.9, true, false, 3)
-		if backBtn and backBtn.xy then
-			Press(backBtn.xy, 1)
-			wait(0.3)
-		end
-		return false
-	end
-	Logger("Claim_Daybreak_Freebie: free Btn found, clicking")
-	Press(freeFull.xy, 1)
-	wait(0.5)
-
-	Logger("Claim_Daybreak_Freebie: searching free 1")
-	local freeConfirm = SearchImageNew("free1.png", Lower_Half, 0.9, true, false, 3)
-	if freeConfirm and freeConfirm.xy then
-		Logger("Claim_Daybreak_Freebie: free1.png found, clicking")
-		Press(freeConfirm.xy, 1)
-		wait(0.5)
-	else
-		Logger("Claim_Daybreak_Freebie: free1.png not found - continuing")
-	end
-
-	Logger("Claim_Daybreak_Freebie: tapping Back ")
-	local backBtn = SearchImageNew("trek/back.png", Upper_Left, 0.9, true, false, 3)
-	if backBtn and backBtn.xy then
-		Press(backBtn.xy, 1)
-		wait(0.3)
-	else
-		Logger("Claim_Daybreak_Freebie: back button not found - invoking Go_Back fallback")
-		Go_Back("Daybreak freebie fallback")
-	end
-
-	SearchImageNew("Island Storehouse.png", Lower_Left, 0.9, true, false, 3)
-	Logger("Claim_Daybreak_Freebie: done")
-	return true
-end
------- free bee island ends here
----
 function Check_OCR_Slider(i, Cur_Bar, ToT_Frame)
 	Logger(string.format("Checking Troop %s", i))	
 	local OCR_Counter = 0
@@ -5310,256 +4758,139 @@ function Get_Nearest_Time(availableTimes)
     return timeDifferenceSeconds
 end
 
-----------------------------------------------------------------
--- Screen regions (fixed Lower_Right) — safe to paste as-is
-----------------------------------------------------------------
-
--- Focused sub-region for the Agnes intel side tab (based on your screenshot):
--- roughly left 30% of screen, from ~8% down to ~50% height.
-
-
-----------------------------------------------------------------
--- Helper: tap Agnes if visible (for Intel LIST screen)
-----------------------------------------------------------------
-local function Maybe_Handle_Agnes_OnIntelList(max_taps)
-    if AgnesWasClaimedToday() then
-        Logger("Agnes intel already claimed today; skipping list scan")
-        return false
-    end
-
-    max_taps = max_taps or 2
-    for n = 1, max_taps do
-        local agnes = SearchImageNew({"Agnes.png", ""}, Agnes_Region, 0.88, true, false, 6)
-        if agnes and agnes.name then
-            Logger(string.format("Agnes intel (list) spotted, tap #%d ...", n))
-            -- Tap and accept any of these post states; don’t block
-            PressRepeatNew(
-                agnes.xy,
-                {"Intel Cans.png", "Intel View.png", "World.png", "City.png"},
-                1, 2, nil, nil, 0.85, true, true
-            )
-            MarkAgnesClaimed()
-            wait(0.6)
-        else
-            -- no more Agnes in the region; bail out
-            return false
-        end
-    end
-    return true
-end
-
-----------------------------------------------------------------
--- Helper: backup - tap Agnes if it appears during Beast branch
-----------------------------------------------------------------
-local function Maybe_Handle_Agnes_Fallback()
-    if AgnesWasClaimedToday() then
-        return false, nil
-    end
-
-    local agnes = SearchImageNew({"Agnes.png", ""}, Upper_Left, 0.88, true, false, 6)
-    if agnes and agnes.name then
-        Logger("Agnes intel spotted (fallback). Tapping and continuing...")
-        PressRepeatNew(agnes.xy, {"World.png","City.png","Intel Cans.png","Intel View.png"}, 1, 2, nil, nil, 0.85, true, true)
-        MarkAgnesClaimed()
-        return true, 2
-    end
-    return false, nil
-end
-
-----------------------------------------------------------------
--- Main: Search_Intel (with early + fallback Agnes support)
-----------------------------------------------------------------
 function Search_Intel()
-    Current_Function = getCurrentFunctionName()
+	Current_Function = getCurrentFunctionName()
+	if (Auto_Join_Enabled) and (Main.Auto_Join.status) then 
+		Auto_Join("OFF")
+		Main.Auto_Join.status = false
+	end
+	
+	if (Auto_Merc_Prestige) and (Main.mercPrestige.status) then 
+		Main.mercPrestige.enabled, Main.mercPrestige.cooldown, Main.mercPrestige.timer = false, 0, nil
+	elseif (Auto_Hero_Mission) and (Main.Hero_Mission.status) then 
+		Main.Hero_Mission.enabled, Main.Hero_Mission.cooldown, Main.Hero_Mission.timer = false, 0, nil
+	end
+	
+	Close_Share_Screen()
+	Main.Intel.status = false
+	Logger("Searching for Intel Button")
+	local Intel_Button = SearchImageNew("Intel Button.png", Lower_Right, 0.9, true)
+	if not(Intel_Button.name) then return 60 end
+	Logger("Intel Found and Opening")
+	PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
+	------ Checks for any completed intel ----------
+	--if not(flameFangs) then end
+	--_G["intel_time" ..Intel_Count]
+	Logger("Checking for Completed Intel")
+	local Completed_Intel = findAllNoFindException(Pattern("Intel Check.png"):similar(0.85):color())
+	for i, cur_Completed in ipairs(Completed_Intel) do
+		Logger(string.format("Intel Completed Found %s/%s", i, table.getn(Completed_Intel)))
+		PressRepeatNew(cur_Completed, "Tap Anywhere.png", 1, 4, cur_Completed, Lower_Half, 0.9, true, true)
+		Logger("Clicking Tap Anywhere")
+		PressRepeatNew("Tap Anywhere.png", "Intel Cans.png", 1, 2, Lower_Half, Upper_Right, 0.9, true, true)
+		wait(1)
+	end
 
-    if (Auto_Merc_Prestige) and (Main.mercPrestige.enabled) then
-        Logger("Mercenary Prestige in progress, delaying Intel run")
-        return 60
-    end
-
-    if (Auto_Hero_Mission) and (Main.Hero_Mission.enabled) then
-        Logger("Hero Mission in progress, delaying Intel run")
-        return 60
-    end
-
-    -- Pause other schedulers while we run Intel
-    if (Auto_Join_Enabled) and (Main.Auto_Join.status) then
-        Auto_Join("OFF")
-        Main.Auto_Join.status = false
-    end
-
-    Close_Share_Screen()
-    Main.Intel.status = false
-
-    Logger("Searching for Intel Button")
-    local Intel_Button = SearchImageNew("Intel Button.png", Lower_Right, 0.9, true)
-    if not (Intel_Button and Intel_Button.name) then return 60 end
-
-    Logger("Intel Found and Opening")
-    PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
-
-    ----------------------------------------------------------------
-    -- Early: tap Agnes on Intel list if present, then continue
-    ----------------------------------------------------------------
-    Logger("Quick scan for Agnes on Intel list")
-    Maybe_Handle_Agnes_OnIntelList(2) -- try up to 2 taps if stacked
-
-    ----------------------------------------------------------------
-    -- Clear any completed intel first
-    ----------------------------------------------------------------
-    Logger("Checking for Completed Intel")
-    local Completed_Intel = findAllNoFindException(Pattern("Intel Check.png"):similar(0.85):color())
-    for i, cur_Completed in ipairs(Completed_Intel) do
-        Logger(string.format("Intel Completed Found %s/%s", i, table.getn(Completed_Intel)))
-        PressRepeatNew(cur_Completed, "Tap Anywhere.png", 1, 4, cur_Completed, Lower_Half, 0.9, true, true)
-        Logger("Clicking Tap Anywhere")
-        PressRepeatNew("Tap Anywhere.png", "Intel Cans.png", 1, 2, Lower_Half, Upper_Right, 0.9, true, true)
-        wait(1)
-    end
-
-    ----------------------------------------------------------------
-    -- Find an available Intel card
-    ----------------------------------------------------------------
-    Logger("Searching for Intel Quests")
-    local Intel_List = {
-        "Intel Beast Hunting.png", "Intel Rescue Survivor.png", "Intel Firebeast.png",
-        "Intel Hero Journey.png", "Intel Hero Journey 1.png",
-        "Intel Beast Hunting 1.png", "Intel Beast Hunting 2.png",
-        "Intel Rescue Survivor 1.png"
-    }
-    if (Intel_Master_Bounty) then table.insert(Intel_List, "Intel Master Bounty.png") end
-
-    local Intel_Completed, Intel_Found = false, nil
-    while true do
-        Intel_Found = SearchImageNew(Intel_List, nil, 0.9, false, false, 3)
-        if (Intel_Found and Intel_Found.name) then
-            break
-        else
-            local No_Other_Quest = SearchImageNew({"Intel Refreshes.png", "Intel Master Bounty.png"}, nil, 0.9, false, false)
-            if (No_Other_Quest and No_Other_Quest.name) then
-                Intel_Completed = true
-                break
-            end
-        end
-        -- Opportunistic scan each loop (cheap)
-        Maybe_Handle_Agnes_OnIntelList(1)
-    end
-
-    ----------------------------------------------------------------
-    -- Gate on stamina / availability
-    ----------------------------------------------------------------
-    if (Intel_Completed) or (Num_OCR(Region(580,20,97,39), "t") < 12) then -- stamina check
-        Claim_Stamina = true
-        local return_value = Get_Nearest_Time()
-        Go_Back("Completed! Returning in: " .. Get_Time(return_value))
-        wait(1)
-
-        if (Enable_Auto_Attack) then
-            if (Auto_Merc_Prestige) and (Main.mercPrestige.status) and not(Main.mercPrestige.enabled) then 
-                Main.mercPrestige.enabled, Main.mercPrestige.cooldown, Main.mercPrestige.timer = true, 0, Timer()
-            elseif (Auto_Hero_Mission) and (Main.Hero_Mission.status) and not(Main.Hero_Mission.enabled) then
-                Main.Hero_Mission.enabled, Main.Hero_Mission.cooldown, Main.Hero_Mission.timer = true, 0, Timer()
-            else
-                Auto_Attack, Main.Attack.cooldown, Main.Attack.timer = true, 0, Timer()
-            end
-        else
-            if (Auto_Join_Enabled) and not (Main.Auto_Join.status) then
-                Auto_Join("ON")
-                Main.Auto_Join.status = true
-            end
-        end
-        return return_value
-    end
-
-    ----------------------------------------------------------------
-    -- Optional stamina claim if flagged
-    ----------------------------------------------------------------
-    if (Claim_Stamina) then
-        Claim_Stamina = false
-        Intel_Get_Stamina(Intel_Button)
-    end
-
-    ----------------------------------------------------------------
-    -- Open the selected intel and branch by type
-    ----------------------------------------------------------------
-    Main.Intel.status = true
-    Logger("Clicking Intel Quest: " .. (Intel_Found and Intel_Found.name or "N/A"))
-    PressRepeatNew(string.format("%s.png", Intel_Found.name), "Intel View.png", 1, 4, nil, nil, 0.9, false, true)
-    Logger("Intel View Opened")
-
-    -- Rescue Survivor
-    if (find_in_list({"Intel Rescue Survivor", "Intel Rescue Survivor 1"}, Intel_Found.name)) then
-        local Intel_Rescue = PressRepeatNew("Intel View.png", "Intel Rescue.png", 1, 4, nil, nil, 0.9, true, true)
-        Logger("Pressing Intel Rescue")
-        PressRepeatNot("Intel Rescue.png", "Intel Rescue.png", 1, 2, nil, nil, 0.9)
-        wait(1)
-        if (SearchImageNew("Obtain More.png").name) then
-            keyevent(4)
-            return 300
-        end
-        return 15
-
-    -- Hero Journey
-    elseif (find_in_list({"Intel Hero Journey", "Intel Hero Journey 1"}, Intel_Found.name)) then
-        PressRepeatNew("Intel View.png", "Intel Explore.png", 1, 4, nil, nil, 0.9, true, true)
-        Logger("Pressing Intel Explore")
-        local exploreStatus = PressRepeatNew("Intel Explore.png", {"Squad Fight.png", "Obtain More.png"}, 1, 4, nil, Lower_Half, 0.9, true, true)
-        if (exploreStatus.name == "Squad Fight") then
-            Logger("Clicking Squad Fight and wait for Completion")
-            PressRepeatNew("Squad Fight.png", "Squad Tap Anywhere to Exit.png", 1, 4, Lower_Half, Lower_Half, 0.9, true, true)
-            Go_Back("Hero Journey Completed and Going back")
-            return 2
-        else
-            keyevent(4)
-            return 300
-        end
-
-    -- Beasts / Firebeast (Agnes fallback lives here)
-    else
-        local Attack = PressRepeatNew("Intel View.png", "Attack.png", 1, 4, nil, nil, 0.9, true, true)
-        Logger("Pressing Attack")
-        local Attack_Status = PressRepeatNew(
-            Attack.xy,
-            {"Deploy.png", "March Queue Limit.png", "March Queue.png"},
-            1, 2, nil, nil, 0.8, true
-        )
-
-        if (Attack_Status.name == "March Queue Limit") then
-            Logger("March Queue Limit! will come back in 00:05:00")
-            return 300
-        end
-
-        if (find_in_list({"Intel Beast Hunting", "Intel Beast Hunting 1", "Intel Beast Hunting 2", "Intel Firebeast"}, Intel_Found.name)) then
-            -- Fallback Agnes check (covers late appearance)
-            local handled, delay_s = Maybe_Handle_Agnes_Fallback()
-            if handled then
-                return delay_s or 2
-            end
-
-            Logger("Setting up attack for Beast")
-            local Original_Attack_Type = Attack_Type
-            Attack_Type = "Beasts"
-            total_Seconds = Auto_Beast(Attack_Status, Attack_Type, Flag_Req, Use_Hero, false)
-            Attack_Type = Original_Attack_Type
-            Logger("Attack in progress")
-            return total_Seconds
-        else
-            Logger("Setting Up attack for Bounty")
-            total_Seconds = Get_March_Time()
-            local Deploy_Status = PressRepeatNew(
-                Attack_Status.xy,
-                {"World.png", "City.png", "Obtain More.png", "Confirmation.png", "Other Troops Marching.png"},
-                1, 4, nil, nil, 0.8, true, true
-            )
-            if (Deploy_Status.name == "Obtain More") then
-                Go_Back("Obtain More Found!")
-                return 300
-            end
-            return total_Seconds * 2
-        end
-    end
-
-    return 2
+	Logger("Searching for Intel Quests")
+	local Intel_List = {"Intel Beast Hunting.png", "Intel Rescue Survivor.png", "Intel Firebeast.png", "Intel Hero Journey.png", "Intel Hero Journey 1.png", "Intel Beast Hunting 1.png", "Intel Beast Hunting 2.png", "Intel Rescue Survivor 1.png"}
+	if (Intel_Master_Bounty) then table.insert(Intel_List, "Intel Master Bounty.png") end
+	------ Search for Available intel ----------
+	local Intel_Completed, Intel_Found = false
+	while true do
+		Intel_Found = SearchImageNew(Intel_List, nil, 0.9, false, false, 3)
+		if (Intel_Found.name) then 
+			break 
+		else
+			local No_Other_Quest = SearchImageNew({"Intel Refreshes.png", "Intel Master Bounty.png"}, nil, 0.9, false, false)
+			if (No_Other_Quest.name) then 
+				Intel_Completed = true
+				break 
+			end
+		end
+	end
+	
+	if (Intel_Completed) or (Num_OCR(Region(580,20,97,39), "t") < 12) then --check if intel is available or stamina is enough
+		Claim_Stamina = true
+		local return_value = Get_Nearest_Time()
+		Go_Back("Completed! Returning in: " ..Get_Time(return_value))
+		wait(1)
+		if (Enable_Auto_Attack) then --------------- Starts Auto Attack ----------------
+			if (Auto_Merc_Prestige) and (Main.mercPrestige.status) then 
+				Main.mercPrestige.enabled, Main.mercPrestige.cooldown, Main.mercPrestige.timer = true, 0, Timer()
+			elseif (Auto_Hero_Mission) and (Main.Hero_Mission.status) then
+				Main.Hero_Mission.enabled, Main.Hero_Mission.cooldown, Main.Hero_Mission.timer = true, 0, Timer()
+			else Auto_Attack, Main.Attack.cooldown, Main.Attack.timer = true, 0, Timer() end
+		else
+			if (Auto_Join_Enabled) and not(Main.Auto_Join.status) then 
+				Auto_Join("ON")
+				Main.Auto_Join.status = true
+			end
+		end
+		return return_value
+	end
+	
+	if (Claim_Stamina) then
+		Claim_Stamina = false
+		Intel_Get_Stamina(Intel_Button)
+	end
+	
+	Main.Intel.status = true
+	Logger("Clicking Intel Quest: " ..Intel_Found.name)
+	PressRepeatNew(string.format("%s.png", Intel_Found.name), "Intel View.png", 1, 4, nil, nil, 0.9, false, true)
+	Logger("Intel View Opened")
+	--if (Intel_Found.name == "Intel Rescue Survivor") then
+	if (find_in_list({"Intel Rescue Survivor", "Intel Rescue Survivor 1"}, Intel_Found.name)) then
+		local Intel_Rescue = PressRepeatNew("Intel View.png", "Intel Rescue.png", 1, 4, nil, nil, 0.9, true, true)
+		Logger("Pressing Intel Rescue")
+		PressRepeatNot("Intel Rescue.png", "Intel Rescue.png", 1, 2, nil, nil, 0.9)
+		wait(1)
+		if (SearchImageNew("Obtain More.png").name) then 
+			keyevent(4)
+			return 300
+		end
+		return 15
+	--elseif (Intel_Found.name == "Intel Hero Journey") then
+	elseif (find_in_list({"Intel Hero Journey", "Intel Hero Journey 1"}, Intel_Found.name)) then
+		PressRepeatNew("Intel View.png", "Intel Explore.png", 1, 4, nil, nil, 0.9, true, true)
+		Logger("Pressing Intel Explore")
+		local exploreStatus = PressRepeatNew("Intel Explore.png", {"Squad Fight.png", "Obtain More.png"}, 1, 4, nil, Lower_Half, 0.9, true, true)
+		if (exploreStatus.name == "Squad Fight") then
+			Logger("Clicking Squad Fight and wait for Completion")
+			PressRepeatNew("Squad Fight.png", "Squad Tap Anywhere to Exit.png", 1, 4, Lower_Half, Lower_Half, 0.9, true, true)
+			Go_Back("Hero Journey Completed and Going back")
+			return 2
+		else
+			keyevent(4)
+			return 300
+		end
+	else
+		local Attack = PressRepeatNew("Intel View.png", "Attack.png", 1, 4, nil, nil, 0.9, true, true)
+		Logger("Pressing Attack")
+		local Attack_Status = PressRepeatNew(Attack.xy, {"Deploy.png", "March Queue Limit.png", "March Queue.png"}, 1, 2, nil, nil, 0.8, true)
+		if (Attack_Status.name == "March Queue Limit") then
+			Logger("March Queue Limit! will come back in 00:05:00")
+			return 300
+		end
+		if (find_in_list({"Intel Beast Hunting", "Intel Beast Hunting 1", "Intel Beast Hunting 2", "Intel Firebeast"}, Intel_Found.name)) then
+			Logger("Setting Up attack for Beast")
+			local Original_Attack_Type = Attack_Type
+			Attack_Type = "Beasts"
+			total_Seconds = Auto_Beast(Attack_Status, Attack_Type, Flag_Req, Use_Hero, false)
+			Attack_Type = Original_Attack_Type
+			Logger("Attack On Progress")
+			return total_Seconds
+		else
+			Logger("Setting Up attack for Bounty")
+			total_Seconds = Get_March_Time()
+			local Deploy_Status = PressRepeatNew(Attack_Status.xy, {"World.png", "City.png", "Obtain More.png", "Confirmation.png", "Other Troops Marching.png"}, 1, 4, nil, nil, 0.8, true, true)
+			if (Deploy_Status.name == "Obtain More") then
+				Go_Back("Obtain More Found!")
+				return 300
+			end
+			return total_Seconds * 2
+		end
+	end
+	return 2
 end
 
 function mailRewardsClaim()
@@ -5788,145 +5119,10 @@ function checkUpgradeableTroops()
 	
 	return {result = false, seconds = 0}
 end
-function expert(button, opts)
-	opts = opts or {}
-	if (button ~= "marksman") then
-		Logger("Expert: unsupported button - " .. tostring(button))
-		return false, 600
-	end
 
-	Logger("Expert: starting marksman expert routine")
-	if not (Side_Check_Opener()) then
-		Logger("Expert: failed to open side panel")
-		return false, 300
-	end
-
-	Logger("Expert: locating marksman entry")
-	local marksmanEntry = SearchImageNew("City Marksman.png", nil, 0.92, true, false, 99)
-	if not (marksmanEntry and marksmanEntry.xy) then
-		Logger("Expert: marksman entry not found; closing side panel")
-		PressRepeatNew("Side Opened.png", "Side Closed.png", 1, 2, nil, nil, 0.9, true, true)
-		return false, 1200
-	end
-
-	Logger("Expert: opening marksman camp")
-	Press(marksmanEntry.xy, 1)
-	wait(0.5)
-	if not (SearchImageNew("World.png", Lower_Right, 0.9, true).name) then
-		PressRepeatNew(marksmanEntry.xy, "World.png", 1, 2, nil, Lower_Right, 0.9, false, true)
-	end
-	wait(2)
-
-	Logger("Expert: clearing overlay buttons")
-	Press(Location(screen.x/2, screen.y/2), 1)
-	wait(2)
-
-	Logger("Expert: searching for Romulus Marksman ")
-	local centerRegionSize = 320
-	local romulusRegion = Region(
-		math.max(0, math.floor((screen.x / 2) - (centerRegionSize / 2))),
-		math.max(0, math.floor((screen.y / 2) - (centerRegionSize / 2))),
-		math.min(screen.x, centerRegionSize),
-		math.min(screen.y, centerRegionSize)
-	)
-	local romulus = SearchImageNew("Rmrk.png", romulusRegion, 0.82, true)
-	if not (romulus and romulus.xy) then
-		romulus = SearchImageNew("Rmrk.png", nil, 0.8, true)
-	end
-
-	if (romulus and romulus.xy) then
-		Logger("Expert: Rmrk  found, tapping")
-		Press(romulus.xy, 1)
-		wait(3)
-		PressRepeatNew("Side Opened.png", "Side Closed.png", 1, 2, nil, nil, 0.9, true, true)
-		return true, 0
-	end
-
-	Logger("Expert: Marksman not found; switching to world")
-	local worldIcon = SearchImageNew("World.png", Lower_Right, 0.9, true)
-	if not (worldIcon and worldIcon.name) then
-		PressRepeatNew(marksmanEntry.xy, "World.png", 1, 2, nil, Lower_Right, 0.9, false, true)
-	else
-		Press(worldIcon.xy, 1)
-	end
-	wait(1.5)
-	PressRepeatNew("Side Opened.png", "Side Closed.png", 1, 2, nil, nil, 0.9, true, true)
-	return false, 10800
-end
--------------------------------Dawn Academy Claim--------------------------------------------------
-function Dawn_Academy()
-        ClickImg("Side Closed.png", Upper_Left, 0.85)
-        Logger("Swipe Up x2")
-        swipe(Location(6, 845), Location(6, 10), 0.5)
-        wait(0.5)
-        swipe(Location(6, 845), Location(6, 10), 0.5)
-        wait(0.5)
-        swipe(Location(6, 845), Location(0, 0), 0.1)
-        Logger("Click Trek Btn")
-        ClickImg("trek/trek.png", Lower_Left, nil)
-        Logger("Waiting back Btn to show ")
-        wait(1)
-        WaitExists("trek/back.png", 2, Upper_Left, 0.85)
-        if WaitExists("trek/bag.png", 1, Upper_Right, 0.8) then
-                Logger("Bag Btn Found , Clicking")
-                ClickImg("trek/bag.png", Upper_Right, 0.8)
-        else
-                Logger("Bag Not Found ")
-                ClickImg("trek/back.png", Upper_Left, 0.85)
-        end
-        if WaitExists("trek/claimtrek1.png", 2, Upper_Right, 0.9) then
-                Logger("Claim Found , Clicking ")
-                ClickImg("trek/claimtrek1.png", Upper_Right, 0.9)
-                updateDawnAcademyLastClaim(os.time())
-                return true, true
-        else
-                Logger("Claim Button Not Found")
-                ClickImg("trek/close.png", Upper_Right, 0.89)
-                ClickImg("trek/back.png", Upper_Left, 0.9)
-                return true, false
-        end
-end
-
-
-function Run_Experts_Enlistment_Claim()
-	Logger("Claim Enlistment Romulus ")
-	ClickImg("Side Closed.png", Upper_Left, 0.8)
-	Logger("Going To City Tech Research")
-	ClickImg("City Tech Research.png", Lower_Left, 0.9)
-	wait(4)
-	local enlistPatterns = {"trek/Enlistment.png", "trek/Enlistment2.png"}
-	local found, enlistButton = WaitExists(enlistPatterns, 2, Enlistment_Button_Region, 0.8)
-	if found and enlistButton and enlistButton.xy then
-		Logger("Enlistment button found; attempting claim")
-		Press(enlistButton.xy, 1)
-		wait(1.5)
-		usePreviousSnap(false)
-		local stillVisible = SearchImageNew(enlistPatterns, Enlistment_Button_Region, 0.8, true)
-		if stillVisible and stillVisible.xy then
-			Logger("Enlistment button still visible after first tap; retrying")
-			Press(stillVisible.xy, 1)
-			wait(1.5)
-			usePreviousSnap(false)
-			stillVisible = SearchImageNew(enlistPatterns, Enlistment_Button_Region, 0.8, true)
-		end
-		if not (stillVisible and stillVisible.name) then
-			Logger("Enlistment Claimed ")
-			wait(2)
-			return true
-		end
-		Logger("Enlistment button did not disappear after tap; assuming claim failed")
-	else
-		Logger("Experts: Enlistment button not found")
-	end
-	ClickImg("World.png", Lower_Most_Half, 0.9)
-	Logger("Enlisment Not Claimed ")
-	return false
-end
 ------------ CITY EVENTS -------------
 function City_Troop_Training(Troop_Type)
 	Current_Function = getCurrentFunctionName()
-	local troopState = (Main and Main[Troop_Type]) or nil
-	local lastDurationKey = string.format("TroopTrainingLast_%s", Troop_Type or "Unknown")
 	local AMTroop = ""
 	if (CHARACTER_ACCOUNT == "Main") and (AM_Enabled) and (#Main.AM.reqList > 0) then
 		local listOfAMQuest = table.concat(Main.AM.reqList, ", ")
@@ -6002,8 +5198,7 @@ function City_Troop_Training(Troop_Type)
 		local Clock = SingleImageWait("Pet Skill/Pet Adventure Clock.png", 9999999, Lower_Most_Half)
 		--local Clock_ROI = Region(Clock.sx + Clock.w * 1.5, Clock.sy - 10, 160, 40)
 		local Clock_ROI = Region(Clock:getX() + Clock:getW() * 1.5, Clock:getY() - 10, 160, 40)
-		local Training_OCR = Num_OCR(Clock_ROI, "Gems")
-		local Current_Number = (Training_OCR) and Convert_To_Seconds(Training_OCR) or 0
+		local Current_Number = Convert_To_Seconds(Num_OCR(Clock_ROI, "Gems"))
 		while true do
 			snapshotColor()
 			local Troop_Gems = SearchImageNew({"Troop Gems 1.png", "Troop Gems 2.png"}, Lower_Half, 0.9, true)
@@ -6014,69 +5209,25 @@ function City_Troop_Training(Troop_Type)
 		end
 		--Logger("Training Troops Seconds: " ..tostring(Current_Number))
 		--Logger("Training Troops Gems: " ..tostring(Gems_Number))
-		Logger(string.format("Gems: %s | Time: %s", Gems_Number, Get_Time(Current_Number)))
-		if (Gems_Number > 0) and (Current_Number > 0) then
-			local Ratio = Current_Number / Gems_Number
-			if (CHARACTER_ACCOUNT == "Main") then preferencePutNumber("Gems_Time_Ratio", Ratio) end
-		end
+		Logger(string.format("Gems: | Time: ", Gems_Number, Get_Time(Current_Number)))
+		local Ratio = Current_Number / Gems_Number
+		if (CHARACTER_ACCOUNT == "Main") then preferencePutNumber("Gems_Time_Ratio", Ratio) end
 		Logger("Training Troops")
 		local Training_Result = PressRepeatNew("Training Button.png", {"Training Speedups.png","Cannot Train.png"}, 1, 2, Lower_Half, nil, 0.9, true, true)
-		if (Training_Result.name == "Cannot Train") then
-			return_result = (Current_Number > 0) and Current_Number or 3600
-		else
-			local ratioFallback = tonumber(preferenceGetNumber("Gems_Time_Ratio", 4.51)) or 4.51
-			return_result = (Current_Number > 0) and Current_Number or math.floor((Gems_Number > 0 and Gems_Number or 1) * ratioFallback)
-		end
+		if (Training_Result.name == "Cannot Train") then return_result = 3600 end
+		return_result = Current_Number
 	else
-		local Clock = SearchImageNew("Pet Skill/Pet Adventure Clock.png", Lower_Most_Half, 0.9, true)
-		if (Clock) and (Clock.name) then
-			local Clock_ROI = Region(Clock.sx + Clock.w * 1.5, Clock.sy - 10, 160, 40)
-			local Clock_OCR = Num_OCR(Clock_ROI, "Gems")
-			local Clock_Number = (Clock_OCR) and Convert_To_Seconds(Clock_OCR) or nil
-			if (Clock_Number) and (Clock_Number > 0) then
-				return_result = Clock_Number
-				Logger("Training queue time derived from clock: " .. Get_Time(return_result))
-			end
+		while true do
+			snapshotColor()
+			local Troop_Gems = SearchImageNew({"Troop Gems 1.png", "Troop Gems 2.png"}, Lower_Half, 0.9, true)
+			Logger("ROI Generated")
+			Gems_Number, OCR_Status = numberOCRNoFindException(Region(Troop_Gems.sx + Troop_Gems.w, Troop_Gems.sy, Troop_Gems.w * 5.5, Troop_Gems.h), "ocr/Gems")
+			usePreviousSnap(false)
+			if ((OCR_Status) and (Gems_Number > 0)) and ((OCR_Status) and (Gems_Number < 40000)) then break end
 		end
-		if not(return_result) then
-			while true do
-				snapshotColor()
-				local Troop_Gems = SearchImageNew({"Troop Gems 1.png", "Troop Gems 2.png"}, Lower_Half, 0.9, true)
-				Logger("ROI Generated")
-				Gems_Number, OCR_Status = numberOCRNoFindException(Region(Troop_Gems.sx + Troop_Gems.w, Troop_Gems.sy, Troop_Gems.w * 5.5, Troop_Gems.h), "ocr/Gems")
-				usePreviousSnap(false)
-				if ((OCR_Status) and (Gems_Number > 0)) and ((OCR_Status) and (Gems_Number < 40000)) then break end
-			end
-			local ratio = tonumber(preferenceGetNumber("Gems_Time_Ratio", 4.51)) or 4.51
-			return_result = math.floor(Gems_Number * ratio)
-			Logger(string.format("Training queue time estimated via ratio: %s (gems %s, ratio %.2f)", Get_Time(return_result), tostring(Gems_Number), ratio))
-		end
+		return_result = Gems_Number * preferenceGetNumber("Gems_Time_Ratio", 4.51)
 	end	
-
-	if (return_result) then
-		local minimal = 600
-		if (return_result < minimal) then
-			local stored = tonumber(preferenceGetNumber(lastDurationKey, minimal))
-			if (stored and stored > minimal) then
-				Logger(string.format("Training estimate below threshold (%s). Using stored duration %s", Get_Time(return_result), Get_Time(stored)))
-				return_result = stored
-			end
-		else
-			preferencePutNumber(lastDurationKey, return_result)
-		end
-	end
-
-	if (return_result) and (troopState and troopState.timer and troopState.cooldown) then
-		local elapsed = troopState.timer:check()
-		local remaining = troopState.cooldown - elapsed
-		if (remaining) and (remaining > 600) then
-			if (return_result < remaining * 0.5) or (return_result < 600) then
-				Logger(string.format("Training estimate too low (%s). Restoring previous remaining %s", Get_Time(return_result), Get_Time(remaining)))
-				return_result = math.max(math.floor(remaining), 600)
-				preferencePutNumber(lastDurationKey, return_result)
-			end
-		end
-	end
+	
 	Go_Back("Troop Training Completed " ..Get_Time(return_result))
 	return return_result
 end
@@ -7329,7 +6480,7 @@ function Bear_Event(ATB, prepTime)
 		wait(Bear_Remaining_Time - 10)
 		checkRecall()
 		Logger("Checking if game still running")
-		if (isForegroundGameLost()) then
+		if (SearchImageNew("Home Screen.png", Home_Screen_Region, 0.9, true).name) then
 			Logger("Home Screen Found! Reopening the Game")
 			local result_timer = Timer()
 			repeat
@@ -7441,6 +6592,8 @@ function Nomadic_Merchant()
 	local Nomadic_Merchant_Status = PressRepeatNew(Shop_Image.xy, {"Nomadic Merchant Clicked.png", "Nomadic Merchant Unclicked.png"}, 1, 3, nil, Lower_Half, 0.9, false, true)
 	if (Nomadic_Merchant_Status.name == "Nomadic Merchant Unclicked.png") then PressRepeatNew("Nomadic Merchant Unclicked.png", "Nomadic Merchant Clicked.png", 1, 3, Lower_Half, Lower_Half, 0.9, true, true) end
 	wait(1)
+	local Nomadic_ROI_List = {[1]=Region(30, 630, 197, 54), [2]=Region(261, 630, 197, 54), [3]=Region(493, 630, 197, 54),
+	[4]=Region(30, 919, 197, 54), [5]=Region(261, 919, 197, 54), [6]=Region(493, 919, 197, 54)}
 	local Nomadic_Status
 	local nomadicRequiredList = {}
 	
@@ -7451,79 +6604,73 @@ function Nomadic_Merchant()
 			if (_G["nomadic" ..v2]) then table.insert(nomadicRequiredList, "Nomadic Merchant/" ..v ..".png") end
 		end
 	end
-	local nomadicIteration = 0
-	local nomadicIterationLimit = 10
 	repeat
-		nomadicIteration = nomadicIteration + 1
-		for i = 1, #Nomadic_Slot_ROI do
-			Logger("Checking Area: " .. i)
-			local slotROI = Nomadic_Slot_ROI[i]
-			local x,y,w,h = slotROI:getX(), slotROI:getY(), slotROI:getW(), slotROI:getH()
+		for i = 1, 6 do
+			Logger("Checking Area: " ..i)
+			local x,y,w,h = Nomadic_ROI_List[i]:getX(), Nomadic_ROI_List[i]:getY(), Nomadic_ROI_List[i]:getW(), Nomadic_ROI_List[i]:getH()
 			local areaROI = Region(x, y - 197, w, h + 143)
-
+			areaROI:highlight()
+			
+			--additional for getting images
+			--[[if (getUserID() == "keefflemiranda@gmail.com") then
+				local itmList, itmListFinal = scandirNew("Nomadic Merchant/"), {}
+				for i, itm in ipairs(itmList) do table.insert(itmListFinal, "Nomadic Merchant/" .. itm) end
+				local imgResult = SearchImageNew(itmListFinal, areaROI, 0.9, true, false, 4)
+				if not(imgResult.name) then 
+					areaROI:saveColor(string.format("Error Screenshot/Nomadic Image %s.png", table.getn(itmList) + 1)) 
+					print("Nomadic Image Saved!")
+				end
+			end--]]
+			
 			while true do
-				Logger("Evaluating slot resources")
+				Logger("Checking Resources")
 				local Task = ""
-
-				if (Discounted == "Select") and (#nomadicRequiredList > 0) then
+				if (Discounted == "Select") and (table.getn(nomadicRequiredList) > 0) then
 					local nomadicList = Split(nomadicGemsList, ",")
-					for idx, v in ipairs(nomadicList) do
-						nomadicList[idx] = string.lower(string.gsub(v, "^%s*(.-)%s*$", "%1"))
+					for i, v in ipairs(nomadicList) do
+						nomadicList[i] = string.lower(string.gsub(v, "^%s*(.-)%s*$", "%1"))
 					end
 					local nomadicItemFound = SearchImageNew(nomadicRequiredList, areaROI, 0.9, false, false, 1.5)
-					local priceGems = SearchImageNew("Nomadic Gems.png", slotROI, 0.9, true, false, 1)
-					if (nomadicItemFound and nomadicItemFound.name) and (find_in_list(nomadicList, "all") or find_in_list(nomadicList, string.lower(nomadicItemFound.name))) then
-						if priceGems and priceGems.name then
-							Task = nomadicGems and "Gem Claim" or "Skip"
-						else
-							Task = "Claim"
-						end
-					else
-						if nomadicFree and not (priceGems and priceGems.name) then Task = "Claim"
+					if ((nomadicItemFound.name) and (find_in_list(nomadicList, "all"))) or ((nomadicItemFound.name) and (find_in_list(nomadicList, string.lower(nomadicItemFound.name)))) then
+						if (SearchImageNew("Nomadic Gems.png", Nomadic_ROI_List[i], 0.9, true, false).name) then
+							if (nomadicGems) then Task = "Gem Claim"
+							else Task = "Skip" end
+						else Task = "Claim" end
+					else 
+						if (nomadicFree) and not(SearchImageNew("Nomadic Gems.png", Nomadic_ROI_List[i], 0.9, true, false).name) then Task = "Claim"
 						else Task = "Skip" end
 					end
 				else
-					local gemCheck = SearchImageNew("Nomadic Gems.png", slotROI, 0.85, true, false, 2)
-					Logger("Gem check result: " .. tostring(gemCheck and gemCheck.name))
-					if gemCheck and gemCheck.name then
-						Logger("Item costs gems. Skipping.")
+					local Nomadic_Result = SearchImageNew({"Nomadic Gems.png", "Nomadic Meat.png", "Nomadic Wood.png", "Nomadic Coal.png", "Nomadic Iron.png"}, Nomadic_ROI_List[i], 0.85, true, false, 999999)
+					Logger("Nomadic Result: " ..Nomadic_Result.name)
+					
+					if (Nomadic_Result.name == "Nomadic Gems") then --add option to buy from here
 						Task = "Skip"
 					else
-						Logger("No gems detected - evaluating free item")
 						if (Discounted == "Discount") then
-							local discountROI = Region(x, y - 197, 80, 80)
-							Logger("Searching for discount badge (% symbol) in top-left corner of area " .. i)
-							local discountStatus = SearchImageNew(Nomadic_Discount_Patterns, discountROI, 0.80, true, false, 2)
-							Logger("Discount search result: " .. tostring(discountStatus and discountStatus.name))
-							local hasDiscount = discountStatus and discountStatus.name and discountStatus.name ~= "Nomadic No Discount"
-							Task = hasDiscount and "Claim" or "Skip"
-							if Task == "Claim" then
-								Logger("Discount badge found; claiming free discounted item")
+							local Percentage_ROI = Region(x, y - (h*4), w, (h*4))
+							local Discounted_Status = SearchImageNew({"Nomadic No Discount.png", "Nomadic Percentage.png"}, Percentage_ROI, 0.9, true, false, 99999)
+							if (Discounted_Status.name == "Nomadic Percentage") then
+								Task = "Claim"
 							else
-								Logger("No discount badge detected; skipping free item")
+								Task = "Skip"	
 							end
 						else
-							Logger("Not in discount mode - claiming free item")
 							Task = "Claim"
 						end
 					end
 				end
-
-				if Task == "Claim" then
-					Logger("Resources found and pressing price area")
-					local offsetX = math.random(5, slotROI:getW() - 6)
-					local offsetY = math.random(3, slotROI:getH() - 7)
-					local targetTap = Location(slotROI:getX() + offsetX + 5, slotROI:getY() + offsetY + 3)
-					click(targetTap)
-					wait(0.6)
-					usePreviousSnap(false)
-					Logger("Claim completed for slot " .. i)
-					break
-				elseif Task == "Gem Claim" then
-					Logger("Gem item selected; proceeding with purchase flow")
-					local offsetX = math.random(5, slotROI:getW() - 6)
-					local offsetY = math.random(3, slotROI:getH() - 7)
-					PressRepeatNew(Location(slotROI:getX() + offsetX + 5, slotROI:getY() + offsetY + 3), "Daily Rewards/Top up Gems.png", 1, 2, nil, Lower_Half)
+				
+				if (Task == "Claim") then
+					Logger("Resources found and Pressing")
+					local offsetX, offsetY = math.random(5, Nomadic_ROI_List[i]:getW() - 6), math.random(3, Nomadic_ROI_List[i]:getH() - 7)
+					click(Location(Nomadic_ROI_List[i]:getX() + offsetX + 5, Nomadic_ROI_List[i]:getY() + offsetY + 3))
+					wait(1.5)
+				elseif (Task == "Gem Claim") then
+					areaROI:highlightOff()
+					Logger("Gem Resources found and Pressing")
+					local offsetX, offsetY = math.random(5, Nomadic_ROI_List[i]:getW() - 6), math.random(3, Nomadic_ROI_List[i]:getH() - 7)
+					PressRepeatNew(Location(Nomadic_ROI_List[i]:getX() + offsetX + 5, Nomadic_ROI_List[i]:getY() + offsetY + 3), "Daily Rewards/Top up Gems.png", 1, 2, nil, Lower_Half)
 					Logger("Clicking Gems")
 					wait(1)
 					local gems = SingleImageWait("Daily Rewards/Top up Gems.png", 9999999, Lower_Half)
@@ -7531,11 +6678,10 @@ function Nomadic_Merchant()
 					local result = PressRepeatNew(gems, {"Nomadic Merchant/Purchase.png", "Nomadic Merchant/nomadic Exclamation.png"}, 1, 2)
 					if (result.name == "Purchase") then PressRepeatNew(gems, "Nomadic Merchant/nomadic Exclamation.png", 1, 3, nil, Upper_Right) end
 					Logger("Purchase Completed")
-					usePreviousSnap(false)
-					wait(0.8)
-					break
-				else
-					Logger("Skipping slot")
+					areaROI:highlight()
+					wait(1.5)
+				elseif (Task == "Skip") then
+					areaROI:highlightOff()
 					break
 				end
 			end
@@ -7548,14 +6694,11 @@ function Nomadic_Merchant()
 			Press(Nomadic_Status.xy, 1)
 			wait(1)
 		end
-		if nomadicIteration >= nomadicIterationLimit then
-			Logger("Nomadic Merchant: maximum refresh iterations reached; exiting loop")
-			break
-		end
 	until(Nomadic_Status.name == "Nomadic Gems Refresh")
 	Go_Back("Nomadic Merchant Completed")
 	return Get_Time_Difference()
 end
+
 ------------------------------------------------ PET SKILLS ------------------------------------------------
 function Use_Pet_Skills(Skills_Type)
 	Current_Function = getCurrentFunctionName()
@@ -7573,30 +6716,13 @@ function Use_Pet_Skills(Skills_Type)
 		end
 	elseif (Skills_Type == "Resources") then
 		local Build_Skills_List = findAllNoFindException(Pattern(Main.Pet_Adventure.dir.. "Pet Skill Build Icon.png"):similar(0.90):color())
-		Logger(string.format("Pet Skills: found %d resource skill icons", #Build_Skills_List))
 		local Builders_Aid_Trigger = false
 		for i, Build_Skill in ipairs(Build_Skills_List) do
-			local Current_Skill_Status = PressRepeatNew(
-				Build_Skill,
-				{
-					Main.Pet_Adventure.dir.. "Pet Skill Quick Use.png",
-					Main.Pet_Adventure.dir.. "Pet Skill Use.png",
-					Main.Pet_Adventure.dir.. "Pet Skill Cooldown.png",
-					Main.Pet_Adventure.dir.. "Pet Skill Active.png"
-				},
-				1, 2, nil, Lower_Half, 0.9, nil, false)
-		Logger(string.format("Pet Skills: resource slot %d status %s", i, tostring(Current_Skill_Status.name or "nil")))
+			local Current_Skill_Status = PressRepeatNew(Build_Skill, {Main.Pet_Adventure.dir.. "Pet Skill Use.png", Main.Pet_Adventure.dir.. "Pet Skill Cooldown.png", Main.Pet_Adventure.dir.. "Pet Skill Active.png"}, 1, 2, nil, Lower_Half, 0.9, nil, false)
 			if (i == 1) and (SearchImageNew(Main.Pet_Adventure.dir.. "Pet Skill Builders Aid.png", Lower_Half, 0.9, true).name) then 
 				--DO NOTHING
 			else
-				if (Current_Skill_Status.name == "Pet Skill Quick Use") then
-					PressRepeatNew(Main.Pet_Adventure.dir.. "Pet Skill Quick Use.png", Main.Pet_Adventure.dir.. "Pet Skill Use All Confirmation.png", 1, 2, nil, nil, 0.9, true, true)
-					local Skill_Status = PressRepeatNew(Main.Pet_Adventure.dir.. "Pet Skill Use.png", {"Tap Anywhere.png", Main.Pet_Adventure.dir.. "Pet Skill Active.png", Main.Pet_Adventure.dir.. "Pet Skill Cooldown.png"}, 1, 2, nil, Lower_Half, 0.9, true, true)
-					if (Skill_Status.name == "Tap Anywhere") then
-						PressRepeatNew("Tap Anywhere.png", Main.Pet_Adventure.dir.. "Pet Skill Logo.png", 1, 2, Lower_Half, Upper_Half, 0.9, true, true)
-					elseif (Skill_Status.name == "Pet Skill Active") and (CHARACTER_ACCOUNT == "Main") then Burden_Bearer_Skill = true
-					end
-				elseif (Current_Skill_Status.name == "Pet Skill Use") then
+				if (Current_Skill_Status.name == "Pet Skill Use") then
 					local Skill_Status = PressRepeatNew(Main.Pet_Adventure.dir.. "Pet Skill Use.png", {"Tap Anywhere.png", Main.Pet_Adventure.dir.. "Pet Skill Active.png", Main.Pet_Adventure.dir.. "Pet Skill Cooldown.png"}, 1, 2, nil, Lower_Half, 0.9, true, true)
 					if (Skill_Status.name == "Tap Anywhere") then
 						PressRepeatNew("Tap Anywhere.png", Main.Pet_Adventure.dir.. "Pet Skill Logo.png", 1, 2, Lower_Half, Upper_Half, 0.9, true, true)
@@ -7857,7 +6983,7 @@ function Chief_Order_Store()
 				PressRepeatNew(Main.Chief_Order_Event.dir.. "Chief Order Button.png", Main.Chief_Order_Event.dir.. "Chief Order Logo.png", 1, 4)
 			end
 		else
-			if (getUserID() == "zombrox@pm.me") then
+			if (getUserID() == "keefflemiranda@gmail.com") then
 				print("Image not found for " ..Chief_Order)
 			end	
 		end
@@ -7946,307 +7072,165 @@ function dotClicker2()
 end
 
 function Daily_Rewards()
-    Current_Function = getCurrentFunctionName()
-
-    -- Mark as running so your UI doesn’t say “not active”
-    if Main and Main.Daily_Rewards then
-        Main.Daily_Rewards.status = true
-    end
-
-    ---------------------------------------------------------------------------
-    -- Context detector: accept City OR any Daily-Rewards surfaces
-    ---------------------------------------------------------------------------
-    local function inDailyRewardsContext()
-        -- already on City
-        if SingleImageWait("City.png", 0, Lower_Most_Half) then return true end
-        -- Events hub or tab open
-        if SearchImageNew("Events.png", Upper_Half, 0.9, true).name then return true end
-        if SearchImageNew("Event logo.png", Upper_Half, 0.9, true).name then return true end
-        -- Deals/VIP/Top-Up screens (these hide City.png)
-        if SearchImageNew(Main.Daily_Rewards.dir.."Deals Logo.png", Upper_Left, 0.9, true).name then return true end
-        if SearchImageNew(Main.Daily_Rewards.dir.."Shop.png", Upper_Half, 0.9, true).name then return true end
-        if SearchImageNew(Main.Daily_Rewards.dir.."Top up Gems.png", Upper_Right, 0.9, true).name then return true end
-        return false
-    end
-
-    local function recoverContext(maxSteps)
-        maxSteps = maxSteps or 3
-        for _=1,maxSteps do
-            -- clear common overlays quickly
-            local tapAny = SearchImageNew("Tap Anywhere.png", nil, 0.9, true, false, 1)
-            if tapAny.name then Press(tapAny.xy, 1) end
-
-            -- close sheets/tips with a generic back
-            Go_Back()
-            wait(0.6)
-            if inDailyRewardsContext() then return true end
-        end
-        return inDailyRewardsContext()
-    end
-
-	local function locateDailyDeals()
-		-- try to capture a fresh frame so the ROI math lines up with the current UI
+	Current_Function = getCurrentFunctionName()
+	local DM_Rewards, VIP_Rewards, Top_Up_Center, Daily_Deals = false, false, false, false
+	snapshotColor() --- requires colored snapshot
+	if not(SingleImageWait("City.png", 0, Lower_Most_Half)) then
 		usePreviousSnap(false)
-
-		-- always prefer the clickable Daily Deals button on the Events bar
-		local dealsButton = SearchImageNew(Main.Daily_Rewards.dir.. "Deals.png", Upper_Right, 0.9, false, false, 9999)
-		if not(dealsButton and dealsButton.name) then
-			Logger("Daily Deals: icon not found in Upper_Right")
-
-			-- if the Deals tab is already open, keep a reference to the header so callers can still interact
-			local dealsHeader = SearchImageNew(Main.Daily_Rewards.dir.. "Deals Logo.png", Upper_Left, 0.9, false, false, 3)
-			if (dealsHeader and dealsHeader.name) then
-				Logger("Daily Deals: tab header detected instead of button")
-				return dealsHeader, false
-			end
-			return nil, false
-		end
-
-		Logger(string.format("Daily Deals: button at (%d,%d,%d,%d)", dealsButton.sx, dealsButton.sy, dealsButton.w, dealsButton.h))
-
-		local roiX = dealsButton.sx + dealsButton.w - 5
-		local roiY = dealsButton.sy - math.floor(dealsButton.h / 1.2)
-		local roiW = dealsButton.w
-		local roiH = dealsButton.h
-		local roiLeft = math.max(0, roiX - math.floor(roiW * 0.25))
-		local roiTop = math.max(0, roiY - math.floor(roiH * 0.25))
-		local roiWidth = math.min(screen.x - roiLeft, roiW + math.floor(roiW * 0.5))
-		local roiHeight = math.min(screen.y - roiTop, roiH + math.floor(roiH * 0.5))
-		local dealsROI = Region(roiLeft, roiTop, roiWidth, roiHeight)
-		Logger(string.format("Daily Deals: ROI (%d,%d,%d,%d)", roiLeft, roiTop, roiWidth, roiHeight))
-
-		local dotImage = SearchImageNew({Main.Daily_Rewards.dir.. "Deals Dot.png", Main.Daily_Rewards.dir.. "Deals No Dot.png"}, dealsROI, 0.88, false, false, 1)
-		if (dotImage and dotImage.name == "Deals Dot") then
-			Logger("Daily Deals: dot image found via ROI search")
-			return dealsButton, true
-		end
-
-		-- fallback: rely on the generic dot finder in case the overlay is offset
-		local fallbackDots = findDot(0)
-		for _, dot in ipairs(fallbackDots) do
-			if (dot.x >= dealsButton.sx - 10) and (dot.x <= dealsButton.sx + dealsButton.w + 10) and (dot.y >= dealsButton.sy - 20) and (dot.y <= dealsButton.sy + dealsButton.h + 20) then
-				Logger("Daily Deals: dot matched via fallback finder")
-				return dealsButton, true
-			end
-		end
-
-		Logger("Daily Deals: no notification dot aligned with button")
-		return dealsButton, false
+		return 0
 	end
-    ---------------------------------------------------------------------------
-
-    -- Ensure we’re on any valid surface; on failure back off to normal cadence
-    if not inDailyRewardsContext() then
-        if not recoverContext(3) then
-            return math.max(60, Auto_DailyRewards_Timer * 60)
-        end
-    end
-
-    local DM_Rewards, VIP_Rewards, Top_Up_Center, Daily_Deals = false, false, false, false
-
-    ---------------------------------------------------------------------------
-    -- DAILY MISSIONS (color snapshot needed for dot check)
-    ---------------------------------------------------------------------------
-    snapshotColor() --- requires colored snapshot
-
-    -- NOTE: Previously this gated on City.png; that’s brittle because Deals/VIP/Top-Up cover City.
-    -- We’ve already validated context above, so we proceed directly.
-
-    local Daily_Mission_Logo = SingleImageWait("Daily Mission.png", 99999, Lower_Left)
-    if (Daily_Mission_Logo) then
-        local DM_ROI = Region(Daily_Mission_Logo:getX(), Daily_Mission_Logo:getY() - (Daily_Mission_Logo:getH() * 2), Daily_Mission_Logo:getW() * 2, Daily_Mission_Logo:getH() * 2)
-        if (SearchImageNew(Main.Daily_Rewards.dir.. "Daily Mission Available.png", DM_ROI, 0.93, true, true).name) then DM_Rewards = true end
-    end
-    usePreviousSnap(false)
-
-    ---------------------------------------------------------------------------
-    -- VIP (plain snapshot)
-    ---------------------------------------------------------------------------
-    snapshot() -- no color snapshot
-    local VIP = SingleImageWait(Main.Daily_Rewards.dir.. "VIP.png", 9999999, Upper_Right)
-    if (VIP) then
-        local VIP_ROI = Region(VIP:getX() + VIP:getW() + 95, VIP:getY() - VIP:getH(), VIP:getW() + 7, VIP:getH() + 10)
-        if (SearchImageNew({Main.Daily_Rewards.dir.. "VIP Dot.png", Main.Daily_Rewards.dir.. "VIP No Dot.png"}, VIP_ROI).name == "VIP Dot") then VIP_Rewards = true end
-    end
-
-    ---------------------------------------------------------------------------
-    -- TOP-UP CENTER
-    ---------------------------------------------------------------------------
-    local Top_Up_Center_Image = SearchImageNew(Main.Daily_Rewards.dir.. "Top up Center.png", Upper_Right, 0.9, false, false, 99999)
-    if (Top_Up_Center_Image.name) then
-        local Top_Up_Center_ROI = Region(Top_Up_Center_Image.x, Top_Up_Center_Image.sy - Top_Up_Center_Image.h, Top_Up_Center_Image.w + 5, Top_Up_Center_Image.h + Top_Up_Center_Image.h / 2)
-        if (SearchImageNew({Main.Daily_Rewards.dir.. "Top Up Dot.png", Main.Daily_Rewards.dir.. "Top Up No Dot.png"}, Top_Up_Center_ROI).name == "Top Up Dot") then Top_Up_Center = true end
-    end
-
-    ---------------------------------------------------------------------------
-    -- DAILY DEALS
-    ---------------------------------------------------------------------------
-	local Daily_Deals_Image, Daily_Deals_Status = locateDailyDeals()
-	if (Daily_Deals_Status) then
-		Logger("Daily Deals: notification detected")
-		Daily_Deals = true
-	else
-		Logger("Daily Deals: no notification detected")
+	
+	local Daily_Mission_Logo = SingleImageWait("Daily Mission.png", 99999, Lower_Left)
+	if (Daily_Mission_Logo) then
+		local DM_ROI = Region(Daily_Mission_Logo:getX(), Daily_Mission_Logo:getY() - (Daily_Mission_Logo:getH() * 2), Daily_Mission_Logo:getW() * 2, Daily_Mission_Logo:getH() * 2)
+		if (SearchImageNew(Main.Daily_Rewards.dir.. "Daily Mission Available.png", DM_ROI, 0.93, true, true).name) then DM_Rewards = true end
 	end
+	usePreviousSnap(false)
 
-    ---------------------------------------------------------------------------
-    -- CLAIM DAILY MISSION
-    ---------------------------------------------------------------------------
-    usePreviousSnap(false)
-    if (DM_Rewards) then
-        PressRepeatHexColor(Daily_Mission_Logo, Location(687, 243), "#D1F7FB", 5, 1, 2)
-        local Daily_Mission_Label = SearchImageNew(Main.Daily_Rewards.dir.. "Daily Mission Label.png", Upper_Half, 0.9, false, false, 2) --Daily Mission Label
-        if not(Daily_Mission_Label.name) then
-            Daily_Mission_Label = PressRepeatNew(Main.Daily_Rewards.dir.. "Daily Missions Unclicked.png", Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 2, Lower_Half, Upper_Half, 0.9, true, true)
-        end
-        local Claim_All = SearchImageNew(Main.Daily_Rewards.dir.. "Claim All.png")
-        if (Claim_All.name) then
-            PressRepeatNew(Claim_All.xy, "Tap Anywhere.png", 1, 5)
-            PressRepeatNew(Daily_Mission_Label.xy, Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 1)
-            if (SearchImageNew("Tap Anywhere.png", Lower_Half, 0.9, true, false, 2).name) then
-                PressRepeatNew(Daily_Mission_Label.xy, Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 1)
-            end
-        else
-            local DMTimer = Timer()
-            while true do
-                if (DMTimer:check() > 150) then break end
-                local Claim_Anywhere = SearchImageNew({Main.Daily_Rewards.dir.. "Claim.png", "Tap Anywhere.png"})
-                if (Claim_Anywhere.name == "Claim") then
-                    Press(Claim_Anywhere.xy, 1)
-                elseif (Claim_Anywhere.name == "Tap Anywhere") then
-                    PressRepeatNew(Daily_Mission_Label.xy, Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 4)
-                else break end
-            end
-        end
-        Go_Back()
+	snapshot() -- no color snapshot
+	local VIP = SingleImageWait(Main.Daily_Rewards.dir.. "VIP.png", 9999999, Upper_Right)
+	if (VIP) then
+		local VIP_ROI = Region(VIP:getX() + VIP:getW() + 95, VIP:getY() - VIP:getH(), VIP:getW() + 7, VIP:getH() + 10)
+		if (SearchImageNew({Main.Daily_Rewards.dir.. "VIP Dot.png", Main.Daily_Rewards.dir.. "VIP No Dot.png"}, VIP_ROI).name == "VIP Dot") then VIP_Rewards = true end
+	end
+	
+	local Top_Up_Center_Image = SearchImageNew(Main.Daily_Rewards.dir.. "Top up Center.png", Upper_Right, 0.9, false, false, 99999)
+	if (Top_Up_Center_Image.name) then
+		local Top_Up_Center_ROI = Region(Top_Up_Center_Image.x, Top_Up_Center_Image.sy - Top_Up_Center_Image.h, Top_Up_Center_Image.w + 5, Top_Up_Center_Image.h + Top_Up_Center_Image.h / 2)
+		if (SearchImageNew({Main.Daily_Rewards.dir.. "Top Up Dot.png", Main.Daily_Rewards.dir.. "Top Up No Dot.png"}, Top_Up_Center_ROI).name == "Top Up Dot") then Top_Up_Center = true end
+	end
+	
+	local Daily_Deals_Image = SearchImageNew(Main.Daily_Rewards.dir.. "Deals.png", Upper_Right, 0.9, false, false, 9999)
+	if (Daily_Deals_Image.name) then
+		local Daily_Deals_ROI = Region(Daily_Deals_Image.sx + Daily_Deals_Image.w - 5, Daily_Deals_Image.sy - (Daily_Deals_Image.h/1.2), Daily_Deals_Image.w, Daily_Deals_Image.h)
+		if (SearchImageNew({Main.Daily_Rewards.dir.. "Deals Dot.png", Main.Daily_Rewards.dir.. "Deals No Dot.png"}, Daily_Deals_ROI).name == "Deals Dot") then Daily_Deals = true end
+	end
+	
+	usePreviousSnap(false)
+	if (DM_Rewards) then
+		PressRepeatHexColor(Daily_Mission_Logo, Location(687, 243), "#D1F7FB", 5, 1, 2)
+		local Daily_Mission_Label = SearchImageNew(Main.Daily_Rewards.dir.. "Daily Mission Label.png", Upper_Half, 0.9, false, false, 2) --Daily Mission Label
+		if not(Daily_Mission_Label.name) then
+			Daily_Mission_Label = PressRepeatNew(Main.Daily_Rewards.dir.. "Daily Missions Unclicked.png", Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 2, Lower_Half, Upper_Half, 0.9, true, true)
+		end
+		--local Current_Screen = PressRepeatNew(Daily_Mission_Logo, {Main.Daily_Rewards.dir.. "Daily Missions Clicked.png", Main.Daily_Rewards.dir.. "Daily Missions Unclicked.png"}, 1, 4, nil, Lower_Half, 0.9, false, true) --Daily Mission Label
+		--if (Current_Screen.name == "Daily Missions Unclicked") then PressRepeatNew(Main.Daily_Rewards.dir.. "Daily Missions Unclicked.png", Main.Daily_Rewards.dir.. "Daily Missions Clicked.png", 1, 2, Lower_Half, Lower_Half, 0.9, true, true) end
+		--local Daily_Mission_Label = SearchImageNew(Main.Daily_Rewards.dir.. "Daily Mission Label.png", Upper_Half, 0.9, false, false, 9999) --Daily Mission Label
+		local Claim_All = SearchImageNew(Main.Daily_Rewards.dir.. "Claim All.png")
+		if (Claim_All.name) then
+			PressRepeatNew(Claim_All.xy, "Tap Anywhere.png", 1, 5)
+			PressRepeatNew(Daily_Mission_Label.xy, Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 1)
+			if (SearchImageNew("Tap Anywhere.png", Lower_Half, 0.9, true, false, 2).name) then
+				PressRepeatNew(Daily_Mission_Label.xy, Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 1)
+			end
+		else
+			local DMTimer = Timer()
+			while true do
+				if (DMTimer:check() > 150) then break end
+				local Claim_Anywhere = SearchImageNew({Main.Daily_Rewards.dir.. "Claim.png", "Tap Anywhere.png"})
+				if (Claim_Anywhere.name == "Claim") then
+					Press(Claim_Anywhere.xy, 1)
+				elseif (Claim_Anywhere.name == "Tap Anywhere") then
+					PressRepeatNew(Daily_Mission_Label.xy, Main.Daily_Rewards.dir.. "Daily Mission Label.png", 1, 4)
+				else break end
+			end
+		end
+		Go_Back()
 		if not(Daily_Deals) then
-			Daily_Deals_Image, Daily_Deals_Status = locateDailyDeals()
-			if (Daily_Deals_Status) then
-				Logger("Daily Deals: notification detected after Daily Mission")
-				Daily_Deals = true
-			else
-				Logger("Daily Deals: still no notification after Daily Mission")
+			Daily_Deals_Image = SearchImageNew(Main.Daily_Rewards.dir.. "Deals.png", Upper_Right, 0.9, false, false, 9999)
+			local Daily_Deals_ROI = Region(Daily_Deals_Image.sx + Daily_Deals_Image.w - 5, Daily_Deals_Image.sy - (Daily_Deals_Image.h/1.2), Daily_Deals_Image.w, Daily_Deals_Image.h)
+			if (SearchImageNew({Main.Daily_Rewards.dir.. "Deals Dot.png", Main.Daily_Rewards.dir.. "Deals No Dot.png"}, Daily_Deals_ROI).name == "Deals Dot") then Daily_Deals = true end
+		end
+	
+	end
+	
+	if (VIP_Rewards) then
+		Logger()
+		---- VIP ---------
+		--print(getColor(VIP_ROI)) -- 255 30 31 color red and non color red 98 136 194
+		PressRepeatNew(VIP, Main.Daily_Rewards.dir.. "Shop.png", 1, 2, Upper_Half, Upper_Half)		
+		local VIP_Box = SearchImageNew({Main.Daily_Rewards.dir.. "VIP Box.png", Main.Daily_Rewards.dir.. "VIP Box Opened.png"}, Upper_Right, 0.9, false, false, 9999)
+		local VIP_Claim = SearchImageNew(Main.Daily_Rewards.dir.. "Claim.png")
+		if (VIP_Box.name == "VIP Box") then
+			PressRepeatNew(VIP_Box.xy, Main.Daily_Rewards.dir.. "Click to Continue.png", 1, 4, nil, Lower_Half)
+			PressRepeatNew(4, Main.Daily_Rewards.dir.. "Shop.png", 1, 4, Lower_Half)
+		end
+		if (VIP_Claim.name) then VIP_Claim.r:highlight(.2)
+			PressRepeatNew(VIP_Claim.xy, "Tap Anywhere.png", 1, 4, nil, Lower_Half)
+			PressRepeatNew("Tap Anywhere.png", Main.Daily_Rewards.dir.. "Shop.png", 1, 4, Lower_Half)
+		end
+		Go_Back()
+	end
+	
+	--Top_Up_Center = false
+	if (Top_Up_Center) then
+		Logger()
+		local topUpTimer = Timer()
+		-------------- TOP UP CENTER
+		PressRepeatNew(Top_Up_Center_Image.xy, Main.Daily_Rewards.dir..  "Top up Gems.png", 1, 2, nil, Upper_Right)
+		while true do
+			if (topUpTimer:check() > 150) then break end
+			local rewards = SearchImageNew({Main.Daily_Rewards.dir.. "Free.png", Main.Daily_Rewards.dir.. "Claimable.png", Main.Daily_Rewards.dir.. "Claimable 2.png", Main.Daily_Rewards.dir.. "Claimable 3.png"})
+			if (rewards.name == "Free") then
+				local result = PressRepeatNew(TargetOffset(rewards.xy, "0", "-20"), {Main.Daily_Rewards.dir.. "Click to Continue.png", "Tap Anywhere.png"}, 1, 4) ---ERROR 3x
+				PressRepeatNew({Main.Daily_Rewards.dir.. "Click to Continue.png", "Tap Anywhere.png"}, Main.Daily_Rewards.dir..  "Top up Gems.png", 1, 2, nil, Upper_Right)
+			elseif (isWordInString(rewards.name, "Claimable")) then
+				Press(TargetOffset(rewards.xy, "0", "-20"), 1)
 			end
+			local Exclamation = SearchImageNew({Main.Daily_Rewards.dir.. "Exclamation.png", Main.Daily_Rewards.dir.. "Dot.png"}, Upper_Half, 0.95, true, false, 2)
+			if (Exclamation.name) then Press(Exclamation.xy, 1)
+			else break end
+			wait(1)
 		end
-	end
-
-    ---------------------------------------------------------------------------
-    -- VIP CLAIM
-    ---------------------------------------------------------------------------
-    if (VIP_Rewards) then
-        Logger()
-        ---- VIP ---------
-        --print(getColor(VIP_ROI)) -- 255 30 31 color red and non color red 98 136 194
-        PressRepeatNew(VIP, Main.Daily_Rewards.dir.. "Shop.png", 1, 2, Upper_Half, Upper_Half)		
-        local VIP_Box = SearchImageNew({Main.Daily_Rewards.dir.. "VIP Box.png", Main.Daily_Rewards.dir.. "VIP Box Opened.png"}, Upper_Right, 0.9, false, false, 9999)
-        local VIP_Claim = SearchImageNew(Main.Daily_Rewards.dir.. "Claim.png")
-        if (VIP_Box.name == "VIP Box") then
-            PressRepeatNew(VIP_Box.xy, Main.Daily_Rewards.dir.. "Click to Continue.png", 1, 4, nil, Lower_Half)
-            PressRepeatNew(4, Main.Daily_Rewards.dir.. "Shop.png", 1, 4, Lower_Half)
-        end
-        if (VIP_Claim.name) then VIP_Claim.r:highlight(.2)
-            PressRepeatNew(VIP_Claim.xy, "Tap Anywhere.png", 1, 4, nil, Lower_Half)
-            PressRepeatNew("Tap Anywhere.png", Main.Daily_Rewards.dir.. "Shop.png", 1, 4, Lower_Half)
-        end
-        Go_Back()
-    end
-
-    ---------------------------------------------------------------------------
-    -- TOP-UP CENTER CLAIM
-    ---------------------------------------------------------------------------
-    if (Top_Up_Center) then
-        Logger()
-        local topUpTimer = Timer()
-        PressRepeatNew(Top_Up_Center_Image.xy, Main.Daily_Rewards.dir..  "Top up Gems.png", 1, 2, nil, Upper_Right)
-        while true do
-            if (topUpTimer:check() > 150) then break end
-            local rewards = SearchImageNew({Main.Daily_Rewards.dir.. "Free.png", Main.Daily_Rewards.dir.. "Claimable.png", Main.Daily_Rewards.dir.. "Claimable 2.png", Main.Daily_Rewards.dir.. "Claimable 3.png"})
-            if (rewards.name == "Free") then
-                local result = PressRepeatNew(TargetOffset(rewards.xy, "0", "-20"), {Main.Daily_Rewards.dir.. "Click to Continue.png", "Tap Anywhere.png"}, 1, 4)
-                PressRepeatNew({Main.Daily_Rewards.dir.. "Click to Continue.png", "Tap Anywhere.png"}, Main.Daily_Rewards.dir..  "Top up Gems.png", 1, 2, nil, Upper_Right)
-            elseif (isWordInString(rewards.name, "Claimable")) then
-                Press(TargetOffset(rewards.xy, "0", "-20"), 1)
-            end
-            local Exclamation = SearchImageNew({Main.Daily_Rewards.dir.. "Exclamation.png", Main.Daily_Rewards.dir.. "Dot.png"}, Upper_Half, 0.95, true, false, 2)
-            if (Exclamation.name) then Press(Exclamation.xy, 1)
-            else break end
-            wait(1)
-        end
-        Go_Back()
-    end
-
-    ---------------------------------------------------------------------------
-    -- DAILY DEALS CLAIM
-    ---------------------------------------------------------------------------
-	if (Daily_Deals) then
-		-- prefer a fresh lookup so we always tap the clickable button instead of a stale header reference
-		local refreshedButton = SearchImageNew(Main.Daily_Rewards.dir.. "Deals.png", Upper_Right, 0.9, false, false, 6)
-		if (refreshedButton and refreshedButton.name) then
-			Daily_Deals_Image = refreshedButton
-		elseif not(Daily_Deals_Image and Daily_Deals_Image.name) then
-			Logger("Daily Deals: need fresh icon search before entering tab")
-			Daily_Deals_Image = select(1, locateDailyDeals())
+		Go_Back()
+	end	
+	--Daily_Deals = false
+	if (Daily_Deals) and (Daily_Deals_Image.name) then
+		Logger()
+		local dealsTimer = Timer()
+		-------------- DAILY DEALS
+		local rewardsList = {Main.Daily_Rewards.dir.. "Current Day.png", Main.Daily_Rewards.dir.. "Claim.png", Main.Daily_Rewards.dir.. "Withdraw.png", Main.Daily_Rewards.dir.. "Claimable 4.png", Main.Daily_Rewards.dir.. "Check Mark.png", Main.Daily_Rewards.dir.. "Check Mark 2.png"}
+		PressRepeatNew(Daily_Deals_Image.xy, Main.Daily_Rewards.dir..  "Deals Logo.png", 1, 2, nil, Upper_Left)
+		while true do
+			if (dealsTimer:check() > 150) then break end
+			dotClicker()
+			local rewards = SearchImageNew(rewardsList, nil, 0.93, true, true, 1)
+			if (rewards.name == "Claim") then
+				while true do
+					local claim = SearchImageNew(Main.Daily_Rewards.dir.. "Claim.png", nil, 0.93, true, false, 1)
+					if (claim.name) then 
+						Press(claim.xy, 1)
+						wait(1)
+					else break end
+				end
+			elseif (rewards.name == "Claimable 4") then
+				Press(TargetOffset(rewards.xy, "0", "-20"), 1)
+			elseif ((rewards.name == "Check Mark") or (rewards.name == "Check Mark 2")) and (isInRegion(Region(602, 418, 96, 160), rewards.x, rewards.y)) then --remove tip or notifications
+				PressRepeatNot(rewards.xy, Main.Daily_Rewards.dir.. rewards.name.. ".png", 1, 2, nil, rewards.r)
+			elseif (rewards.name == "Current Day") then
+				local Current_Day_ROI = Region(rewards.sx - (rewards.w*1.2), rewards.sy + (rewards.h / 2), rewards.w / 2, rewards.h / 2)
+				Press(Current_Day_ROI, 1)
+				removeStringFromTable(rewardsList, Main.Daily_Rewards.dir.. "Current Day.png")
+			elseif (rewards.name == "Withdraw") then
+				PressRepeatNew(rewards.xy, "Tap Anywhere.png", 1, 4)
+				PressRepeatNew("Tap Anywhere.png", Main.Daily_Rewards.dir.. "Deposit.png", 1, 2)
+				local Plus = PressRepeatNew(rewards.xy, "Plus.png", 1, 4)
+				local Slider = SearchImageNew("Slider Button.png", nil, 0.9, true, false, 9999)
+				swipe(Slider.loc, Plus.loc, .8)
+				PressRepeatNew(Main.Daily_Rewards.dir.. "Confirm Deposit.png", Main.Daily_Rewards.dir.. "Deposit.png", 1, 2)
+			end
+			local Exclamation = SearchImageNew({Main.Daily_Rewards.dir.. "Exclamation.png", Main.Daily_Rewards.dir.. "Dot.png"}, Upper_Half, 0.95, true, false, 2)
+			if (Exclamation.name) then 
+				Press(Exclamation.xy, 1)
+				wait(1)
+			else break end
 		end
+		Go_Back()
 	end
-	if (Daily_Deals) and (Daily_Deals_Image and Daily_Deals_Image.name) then
-		Logger("Daily Deals: entering Deals tab")
-        Logger()
-        local dealsTimer = Timer()
-        local rewardsList = {
-            Main.Daily_Rewards.dir.. "Current Day.png",
-            Main.Daily_Rewards.dir.. "Claim.png",
-            Main.Daily_Rewards.dir.. "Withdraw.png",
-            Main.Daily_Rewards.dir.. "Claimable 4.png",
-            Main.Daily_Rewards.dir.. "Check Mark.png",
-            Main.Daily_Rewards.dir.. "Check Mark 2.png"
-        }
-        PressRepeatNew(Daily_Deals_Image.xy, Main.Daily_Rewards.dir..  "Deals Logo.png", 1, 2, nil, Upper_Left)
-        while true do
-            if (dealsTimer:check() > 150) then break end
-            dotClicker()
-            local rewards = SearchImageNew(rewardsList, nil, 0.93, true, true, 1)
-            if (rewards.name == "Claim") then
-                while true do
-                    local claim = SearchImageNew(Main.Daily_Rewards.dir.. "Claim.png", nil, 0.93, true, false, 1)
-                    if (claim.name) then 
-                        Press(claim.xy, 1)
-                        wait(1)
-                    else break end
-                end
-            elseif (rewards.name == "Claimable 4") then
-                Press(TargetOffset(rewards.xy, "0", "-20"), 1)
-            elseif ((rewards.name == "Check Mark") or (rewards.name == "Check Mark 2")) and (isInRegion(Region(602, 418, 96, 160), rewards.x, rewards.y)) then
-                -- remove tip or notifications
-                PressRepeatNot(rewards.xy, Main.Daily_Rewards.dir.. rewards.name.. ".png", 1, 2, nil, rewards.r)
-            elseif (rewards.name == "Current Day") then
-                local Current_Day_ROI = Region(rewards.sx - (rewards.w*1.2), rewards.sy + (rewards.h / 2), rewards.w / 2, rewards.h / 2)
-                Press(Current_Day_ROI, 1)
-                removeStringFromTable(rewardsList, Main.Daily_Rewards.dir.. "Current Day.png")
-            elseif (rewards.name == "Withdraw") then
-                PressRepeatNew(rewards.xy, "Tap Anywhere.png", 1, 4)
-                PressRepeatNew("Tap Anywhere.png", Main.Daily_Rewards.dir.. "Deposit.png", 1, 2)
-                local Plus = PressRepeatNew(rewards.xy, "Plus.png", 1, 4)
-                local Slider = SearchImageNew("Slider Button.png", nil, 0.9, true, false, 9999)
-                swipe(Slider.loc, Plus.loc, .8)
-                PressRepeatNew(Main.Daily_Rewards.dir.. "Confirm Deposit.png", Main.Daily_Rewards.dir.. "Deposit.png", 1, 2)
-            end
-            local Exclamation = SearchImageNew({Main.Daily_Rewards.dir.. "Exclamation.png", Main.Daily_Rewards.dir.. "Dot.png"}, Upper_Half, 0.95, true, false, 2)
-            if (Exclamation.name) then 
-                Press(Exclamation.xy, 1)
-                wait(1)
-            else break end
-        end
-        Go_Back()
-    end
-
-    Logger()
-    -- Steady-state delay: Auto_Daily_Rewards_Timer minutes
-    -- (Use >=60s if someone sets it absurdly low)
-    local nextDelay = math.max(60, Auto_DailyRewards_Timer * 60)
-    Logger(string.format("Daily_Rewards: next run in %ds", nextDelay))
-    return nextDelay
+	
+	Logger()
+	return Auto_DailyRewards_Timer * 60
 end
-
 
 function heroMission()
 	Current_Function = getCurrentFunctionName()
@@ -8269,35 +7253,17 @@ function heroMission()
 	if not(heroMissionTab.name) then
 		local Swipe_Right, Swipe_Left, Middle = Location(ranNumbers(50, 10), 170), Location(ranNumbers(655, 10), 170), Location(screen.x/2, 170)
 		local Start_Loc = Swipe_Right
-
-		-- NEW: after Calendar appears, do exactly two right swipes
-		local pendingRightSwipes = 0
-
 		local swipeTimer = Timer()
 		while true do
-			-- Force right swipe if we owe any
-			if pendingRightSwipes > 0 then
-				Start_Loc = Swipe_Left  -- left->middle = swipe RIGHT
-			end
-
 			--swipe(ranNumbers(Start_Loc, 10), Middle, 2)
 			swipe(Start_Loc, Middle, 2)
 			wait(1)
-
-			-- If we just did one of the "owed" swipes, decrement it
-			if pendingRightSwipes > 0 then
-				pendingRightSwipes = pendingRightSwipes - 1
-			end
-
 			heroMissionTab = SearchImageNew(heroMissionEventDir.. "Hero Mission Tab Unselected.png", Upper_Half, 0.9, true)
 			if (heroMissionTab.name) then break end
-
 			if (SearchImageNew("Events/Calendar.png", Upper_Half, 0.9, true).name) then 
-				Logger("Calendar Found – will swipe RIGHT x2")
-				-- Queue exactly two right swipes on the next iterations
-				pendingRightSwipes = 2
+				Logger("Calendar Found Swiping Right")
+				Start_Loc = Swipe_Left 
 			end
-
 			if (SearchImageNew("Events/Community.png", Upper_Right, 0.9, true).name) then 
 				Logger("Community found")
 				Go_Back("Hero Mission Event Unavailable")
@@ -8420,7 +7386,6 @@ function heroMission()
 	end
 	return 0
 end
-
 
 function checkIntelStamina()
 	Logger("Searching for Intel Button")
@@ -8898,22 +7863,6 @@ function Timer_Setup()
 		Main.Triumph.timer, Main.Triumph.status = Timer(), true
 	end
 	if (Auto_Attack) then Main.Attack.timer = Timer() end
-	if (Main.Experts.enabled) then
-		Main.Experts.timer = Timer()
-		Main.Experts.cooldown = Main.Experts.cooldown or 0
-		if (Main.Experts.dawnEnabled) then
-			Main.Experts.dawnTimer = Timer()
-			if (Main.Experts.dawnNeedsImmediateCheck == nil) or (Main.Experts.dawnNeedsImmediateCheck == false) then
-				Main.Experts.dawnNeedsImmediateCheck = shouldTriggerImmediateDawnAcademy()
-			end
-			if not (Main.Experts.dawnCooldown and Main.Experts.dawnCooldown > 0) then
-				Main.Experts.dawnCooldown = getNextDawnAcademyCooldown()
-			end
-		end
-		if (Main.Experts.enlistEnabled) then
-			Main.Experts.enlistTimer = Main.Experts.enlistTimer or Timer()
-		end
-	end
 	if (Exploration_Enabled) then Main.Exploration.timer = Timer() end
 	if (Auto_Join_Enabled) then 
 		Main.Auto_Join.timer, Main.Auto_Join.status = Timer(), true	
@@ -8961,7 +7910,7 @@ function Timer_Setup()
 	end
 	if (Pet_Adventure) then Main.Pet_Adventure.timer = Timer() end
 	
-	if (Barney_Enabled) then -- and (getUserID() == "zombrox@pm.me")
+	if (Barney_Enabled) then -- and (getUserID() == "keefflemiranda@gmail.com")
 		Main.Barney.timer = Timer() 
 		for timer in Barney_Time_Str:gmatch("%d+:%d+") do
 			table.insert(Barney_Time, formatTime(timer))
@@ -9045,23 +7994,15 @@ function Report_Sender()
 	end
 	local result = ""
 	if (Text_Report) or (Image_Report) then
-		local reportToken = preferenceGetString("reportServerToken", "")
-		if not (reportToken and reportToken ~= "") then
-			Logger("Report not sent: reportServerToken preference is empty")
-		else
-			local query = {
-				token = reportToken,
-				so = "ankulua",
-				mod = "activity",
-				msg = string.format("%s\n%s", explanation, fileContents),
-				images = table.concat(image_table, ", "),
-			}
-			local userId = getUserID()
-			if userId and userId ~= "" then
-				query.userid = userId
-			end
-			result = httpPost('http://178.153.194.140:32400', {data=textToBase64(jsonify(query))})
-		end
+		local query = {
+			token = "Xj5Ks6pNqW3yDt8A", --your server token here
+			so = "ankulua",
+			mod = "activity",
+			userid = getUserID(),
+			msg = string.format("%s\n%s", explanation, fileContents),
+			images = table.concat(image_table, ", "),
+		}
+		result = httpPost('http://178.153.194.140:32400', {data=textToBase64(jsonify(query))})
 	end
 	if (Delete_Reports) and (result == "Report Sent Successfully!") then 
 		local file = io.open(scriptPath() .. "image/Error Screenshot/Error Logs.txt", "w")
@@ -9076,7 +8017,7 @@ function Report_Sender()
 			end
 		end
 	end
-	os.exit()
+	scriptExit()
 end
 
 local No_Game
@@ -9102,16 +8043,7 @@ function Check_Screen()
 		until(result.name) or (result_timer:check() > 10)
 	end
 	------------ Checking Home Screen Images ----------------
-	if (Auto_Reconnect) then
-		usePreviousSnap(false)
-		local reconnectPrompt = SearchImageNew("Reconnect.png", nil, 0.85, true, false, 1)
-		if (reconnectPrompt and reconnectPrompt.name) then
-			Logger("Reconnect popup detected during home screen check; invoking reconnect handler")
-			Auto_Reconnect_fn()
-			return "Completed"
-		end
-	end
-	if (isForegroundGameLost()) then
+	if (SearchImageNew("Home Screen.png", Home_Screen_Region, 0.9, true).name) then
 		Logger("Home Screen Found! Reopening the Game")
 		while true do
 			startApp("com.gof.global")
@@ -9537,87 +8469,6 @@ function StartBot(User_ID)
 			Main.Marksman.timer:set()
 		end
 	end
-	if (Main.Experts.enabled) then
-		if not (Main.Experts.timer) then Main.Experts.timer = Timer() end
-		Main.Experts.cooldown = Main.Experts.cooldown or 0
-		if (Main.Experts.request) and (Main.Experts.timer:check() >= Main.Experts.cooldown) then
-			Logger("Experts: executing Claim Marksmen")
-			Main.Experts.request = false
-			local success, followup = expert("marksman")
-			local numericFollowup = tonumber(followup) or 0
-			if (success) then
-				Main.Experts.cooldown = numericFollowup
-				Logger("Experts: Claim Marksmen completed")
-			else
-				if (numericFollowup <= 0) then numericFollowup = 600 end
-				Main.Experts.cooldown = numericFollowup
-				Main.Experts.request = true
-				Logger(string.format("Experts: Claim Marksmen failed; retry in %s seconds", numericFollowup))
-			end
-			Main.Experts.timer:set()
-		end
-
-		if (Main.Experts.dawnEnabled) then
-			if not (Main.Experts.dawnTimer) then Main.Experts.dawnTimer = Timer() end
-			local interval = Main.Experts.dawnInterval or 0
-			if interval <= 0 then
-				interval = getNextDawnAcademyCooldown()
-				Main.Experts.dawnInterval = interval
-			end
-			if not (Main.Experts.dawnCooldown and Main.Experts.dawnCooldown >= 0) then
-				Main.Experts.dawnCooldown = interval
-			end
-			local dawnDue = Main.Experts.dawnTimer:check() >= Main.Experts.dawnCooldown
-			if (Main.Experts.dawnNeedsImmediateCheck) then
-				Logger("Experts: forcing Dawn Academy run to validate trek claim state")
-			end
-			if (Main.Experts.dawnNeedsImmediateCheck) or dawnDue then
-				Logger("Experts: executing Dawn Academy")
-				Main.Experts.dawnNeedsImmediateCheck = false
-				local success, followup = Dawn_Academy()
-				local nextCooldown = Main.Experts.dawnInterval or getNextDawnAcademyCooldown()
-				if (success == false) then
-					Logger("Experts: Dawn Academy encountered an issue; retrying after interval")
-					expertsLogMessage("Experts: Dawn Academy encountered an issue; retrying after interval")
-				end
-				Main.Experts.dawnCooldown = nextCooldown
-				Main.Experts.dawnTimer:set()
-				if (Main.Experts.dawnInterval and Main.Experts.dawnInterval > 0) then
-					local nextMinutes = math.floor((nextCooldown or 0) / 60)
-					local logMsg = string.format("Experts: next Dawn Academy run in %d minutes", nextMinutes)
-					Logger(logMsg)
-					expertsLogMessage(logMsg)
-				else
-					local logMsg = string.format("Experts: next Dawn Academy run at %s UTC", formatUTCRelative(nextCooldown))
-					Logger(logMsg)
-					expertsLogMessage(logMsg)
-				end
-			end
-		end
-
-	if (Main.Experts.enlistEnabled) and (Main.Experts.enlistPending) then
-		if not (Main.Experts.enlistTimer) then Main.Experts.enlistTimer = Timer() end
-		local enlistCooldown = Main.Experts.enlistCooldown or 0
-		if (Main.Experts.enlistTimer:check() >= enlistCooldown) then
-			Logger("Experts: executing Enlistment claim")
-			local success = Run_Experts_Enlistment_Claim()
-				if (success) then
-					local today = os.date("%Y-%m-%d")
-					Enlistment_Claim_Date = today
-					preferencePutString("expertsEnlistmentDate", today)
-					Main.Experts.enlistPending = false
-					Main.Experts.enlistCooldown = 0
-					Main.Experts.enlistTimer:set()
-					Logger("Experts: Enlistment claim completed")
-				else
-					local retry = 600
-					Main.Experts.enlistCooldown = retry
-					Main.Experts.enlistTimer:set()
-					Logger(string.format("Experts: Enlistment claim failed; retry in %s seconds", retry))
-				end
-			end
-		end
-	end
 	
 	if (Recruit_Heroes) and (Main.Recruit_Heroes.timer:check() > Main.Recruit_Heroes.cooldown) and ((ignorePersistence) or not(preferenceGetString("mainRecruitHeroes", "NA") == Current_Date)) then
 		Main.Recruit_Heroes.cooldown = Recruiting_Heroes()
@@ -9749,12 +8600,6 @@ function RunScript(version)
 	if (table.getn(Pack_Sale_Dir) > 0) then for i, pack in ipairs(Pack_Sale_Dir) do table.insert(Pack_Sale_List, "Pack Sale/"..pack) end end
 	User_ID = getUserID()
 	Main_GUI(version)
-	Main.Experts.enabled, Main.Experts.request = false, false
-	Main.Experts.dawnEnabled, Main.Experts.dawnTimer, Main.Experts.dawnCooldown = false, nil, 0
-	Main.Experts.dawnInterval = 0
-	Main.Experts.enlistEnabled, Main.Experts.enlistPending = false, false
-	Main.Experts.enlistTimer, Main.Experts.enlistCooldown = nil, 0
-	if (Enable_Experts) then Experts_GUI() end
 	
 	if (Send_Report_GUI) then Report_Sender() end
 	
@@ -9809,14 +8654,12 @@ function RunScript(version)
 	-------------------- Start Loop ----------------------
 	Logger("Setting up timer")
 	Timer_Setup()
-	primeMainTaskTimers()
 	Logger("Starting")
-	if (getUserID() == "zombrox@pm.me") then CHARACTER_ACCOUNT = forceUse end
+	if (getUserID() == "keefflemiranda@gmail.com") then CHARACTER_ACCOUNT = forceUse end
 
 	while true do
 		Message.Total_Time = Get_Time2(os.time() - Start_Time)
 		setStopMessage(printMessage(Message, keyOrder))
-
 		local success, result
 		if (CHARACTER_ACCOUNT == "Main") then success, result = xpcall(function() return StartBot(User_ID) end, debug.traceback)
 		elseif (CHARACTER_ACCOUNT == "Alt_Bear") then success, result = xpcall(function() return Barney_Specifics_AM("Bear") end, debug.traceback)
@@ -9827,9 +8670,6 @@ function RunScript(version)
 			Logger()
 			wait((StartAPP_Timer2) and .5 or Repeat_Delay)
 			Iteration = Iteration + 1
-			if Main.forceInitialSweep then
-				Main.forceInitialSweep = false
-			end
 			if not(repeatCount == "00") then
 				if (Iteration >= tonumber(repeatCount)) then
 					Message.Total_Time = Get_Time2(os.time() - Start_Time)
@@ -9902,13 +8742,6 @@ function RunScript(version)
 	scriptExit()
 end
 
-function scriptExit(message)
-	if message then
-		print(message)
-	end
-	os.exit()
-end
-
 function luckyPouch()
 	local LPDir = "Lucky Pouch/"
 	if (SingleImageWait(LPDir.. "Lucky Pouch.png", 0, Lower_Half, 0.9, true)) then
@@ -9929,7 +8762,5 @@ function luckyPouch()
 	end
 end
 --luckyPouch()
-RunScript("v25.10.26")
+RunScript("v20250503a")
 scriptExit()
-
--- EOF
