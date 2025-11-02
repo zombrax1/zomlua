@@ -4968,7 +4968,7 @@ function expert_Agnes()
         if (agnesData.cooldown or 0) > 0 and (agnesData.timer:check() < agnesData.cooldown) then return end
 
         Logger("Checking for Expert Agnes")
-        local agnes = SearchImageNew({"Agnes.png"}, Upper_Left, 0.88, true, false, 6)
+        local agnes = SearchImageNew({"Agnes.png", ""}, Upper_Left, 0.88, true, false, 6)
         agnesData.timer:set()
 
         if (agnes.name) then
@@ -8854,9 +8854,8 @@ function RunScript(version)
 
         Main.Dawn_Academy.enabled = Run_Dawn_Academy or false
         Main.Experts.Agnes.enabled = Enable_Expert_Agnes or false
-        local agnesIgnoreMinutes = tonumber(Expert_Agnes_Ignore) or 15
-        Main.Experts.Agnes.ignoreMinutes = agnesIgnoreMinutes
-        Main.Experts.Agnes.retryInterval = agnesIgnoreMinutes * 60
+        Main.Experts.Agnes.ignoreMinutes = math.max(0, tonumber(Expert_Agnes_Ignore) or 15)
+        Main.Experts.Agnes.retryInterval = (Main.Experts.Agnes.ignoreMinutes or 0) * 60
         Main.Experts.Agnes.cooldown = 0
         if not(Main.Experts.Agnes.enabled) then Main.Experts.Agnes.timer = nil end
 
@@ -17618,9 +17617,8 @@ function RunScript(version)
 
         Main.Dawn_Academy.enabled = Run_Dawn_Academy or false
         Main.Experts.Agnes.enabled = Enable_Expert_Agnes or false
-        local agnesIgnoreMinutes = tonumber(Expert_Agnes_Ignore) or 15
-        Main.Experts.Agnes.ignoreMinutes = agnesIgnoreMinutes
-        Main.Experts.Agnes.retryInterval = agnesIgnoreMinutes * 60
+        Main.Experts.Agnes.ignoreMinutes = math.max(0, tonumber(Expert_Agnes_Ignore) or 15)
+        Main.Experts.Agnes.retryInterval = (Main.Experts.Agnes.ignoreMinutes or 0) * 60
         Main.Experts.Agnes.cooldown = 0
         if not(Main.Experts.Agnes.enabled) then Main.Experts.Agnes.timer = nil end
 
