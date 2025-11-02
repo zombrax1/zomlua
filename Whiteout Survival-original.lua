@@ -66,7 +66,7 @@ local maxInjured
 local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315, 250), Region(350, 590, 315, 250)}, reqList = {}}, Meat = {timer = nil, cooldown = 0}, Wood = {timer = nil, cooldown = 0}, Coal = {timer = nil, cooldown = 0}, Iron = {timer = nil, cooldown = 0},
 	Tech = {timer = nil, cooldown = 0}, Attack = {timer = nil, cooldown = 0, counter = 0}, Exploration = {timer = nil, cooldown = 0}, Auto_Join = {timer = nil, cooldown = 0, enabled = false, status = false}, StartAPP1 = {timer = nil, cooldown = 0},
 	StartAPP2 = {timer = nil, cooldown = 0}, City = {timer = nil, cooldown = 0}, Arena = {timer = nil, cooldown = 0, dir = "Arena/"}, Crystal_Laboratory = {timer = nil, cooldown = 0, status = nil}, War_Academy = {timer = nil, cooldown = 0, status = nil},
-        Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Dawn_Academy = {enabled = false}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
+        Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Dawn_Academy = {enabled = false}, Experts = {Agnes = {enabled = false, timer = nil, cooldown = 0, retryInterval = 0}}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
@@ -321,7 +321,7 @@ function Main_GUI(version)
         addCheckBox("AM_Enabled", "Alliance Mobilization", false)
         addCheckBox("Map_Options", "Map Options", false)
         newRow()
-        addCheckBox("Run_Dawn_Academy", "Dawn Academy", false)
+        addCheckBox("Experts_Options", "Experts", false)
         addSeparator()
         newRow()
 	addCheckBox("Barney_Enabled", "Use Alternate Character", false)
@@ -391,9 +391,20 @@ function Main_GUI(version)
 	--addEditNumber("Third_Total", 100)--]]
 end
 
+function Experts_GUI()
+        dialogInit()
+        addCheckBox("Run_Dawn_Academy", "Dawn Academy", false)
+        newRow()
+        addCheckBox("Enable_Expert_Agnes", "Agnes", false)
+        addTextView("   Ignore for")
+        addEditNumber("Expert_Agnes_Ignore", 15)
+        addTextView(" m")
+        dialogShowFullScreen("Experts")
+end
+
 function Intel_Options_GUI()
-	dialogInit()
-	addTextView("Intel Now/Later?")
+        dialogInit()
+        addTextView("Intel Now/Later?")
 	addSpinner("Intel_Now_later", {"Now", "Later"}, "Now")
 	addCheckBox("Intel_Master_Bounty", "Include Bounty", false)
 	newRow()
@@ -4948,6 +4959,35 @@ function Get_Nearest_Time(availableTimes)
     return timeDifferenceSeconds
 end
 
+function expert_Agnes()
+        if not(Main.Experts.Agnes.enabled) then return end
+
+        local agnesData = Main.Experts.Agnes
+        if not(agnesData.timer) then agnesData.timer = Timer() end
+
+        if (agnesData.cooldown or 0) > 0 and (agnesData.timer:check() < agnesData.cooldown) then return end
+
+        Logger("Checking for Expert Agnes")
+        local agnes = SearchImageNew({"Agnes.png"}, Upper_Left, 0.88, true, false, 6)
+        agnesData.timer:set()
+
+        if (agnes.name) then
+                Logger("Expert Agnes found. Selecting expert.")
+                Press(agnes.xy, 1)
+                wait(0.5)
+                agnesData.cooldown = 0
+        else
+                local retrySeconds = agnesData.retryInterval or 0
+                local delayMinutes = agnesData.ignoreMinutes or ((retrySeconds > 0) and (retrySeconds / 60) or 0)
+                if (delayMinutes > 0) then
+                        Logger(string.format("Expert Agnes not available. Deferring checks for %d minute(s).", math.max(1, math.floor(delayMinutes + 0.5))))
+                else
+                        Logger("Expert Agnes not available. Continuing with Intel tasks.")
+                end
+                agnesData.cooldown = retrySeconds
+        end
+end
+
 function Search_Intel()
 	Current_Function = getCurrentFunctionName()
 	if (Auto_Join_Enabled) and (Main.Auto_Join.status) then 
@@ -4965,10 +5005,11 @@ function Search_Intel()
 	Main.Intel.status = false
 	Logger("Searching for Intel Button")
 	local Intel_Button = SearchImageNew("Intel Button.png", Lower_Right, 0.9, true)
-	if not(Intel_Button.name) then return 60 end
-	Logger("Intel Found and Opening")
-	PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
-	------ Checks for any completed intel ----------
+        if not(Intel_Button.name) then return 60 end
+        Logger("Intel Found and Opening")
+        PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
+        expert_Agnes()
+        ------ Checks for any completed intel ----------
 	--if not(flameFangs) then end
 	--_G["intel_time" ..Intel_Count]
 	Logger("Checking for Completed Intel")
@@ -8083,12 +8124,14 @@ function Timer_Setup()
 		if (Bear_Now_later == "byEvents") then Main.Bear_Event.cooldown = Get_Time_Difference(nil, Bear_Start_Time) end			
 	end
 	
-	if (Auto_Intel) then 
-		Main.Intel.timer = Timer()
-		if (Intel_Now_later == "Later") then Main.Intel.cooldown = Get_Nearest_Time() end
-	end
-	
-	if (Auto_DailyRewards) then Main.DailyRewards.timer = Timer() end
+        if (Auto_Intel) then
+                Main.Intel.timer = Timer()
+                if (Intel_Now_later == "Later") then Main.Intel.cooldown = Get_Nearest_Time() end
+        end
+
+        if (Main.Experts.Agnes.enabled) then Main.Experts.Agnes.timer = Timer() end
+
+        if (Auto_DailyRewards) then Main.DailyRewards.timer = Timer() end
 	
 	if (Auto_Mail) then Main.Mail.timer = Timer() end
 	
@@ -8807,7 +8850,15 @@ function RunScript(version)
 	User_ID = getUserID()
         Main_GUI(version)
 
+        if (Experts_Options) then Experts_GUI() end
+
         Main.Dawn_Academy.enabled = Run_Dawn_Academy or false
+        Main.Experts.Agnes.enabled = Enable_Expert_Agnes or false
+        local agnesIgnoreMinutes = tonumber(Expert_Agnes_Ignore) or 15
+        Main.Experts.Agnes.ignoreMinutes = agnesIgnoreMinutes
+        Main.Experts.Agnes.retryInterval = agnesIgnoreMinutes * 60
+        Main.Experts.Agnes.cooldown = 0
+        if not(Main.Experts.Agnes.enabled) then Main.Experts.Agnes.timer = nil end
 
         if (Send_Report_GUI) then Report_Sender() end
 	
@@ -9007,7 +9058,7 @@ local maxInjured
 local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315, 250), Region(350, 590, 315, 250)}, reqList = {}}, Meat = {timer = nil, cooldown = 0}, Wood = {timer = nil, cooldown = 0}, Coal = {timer = nil, cooldown = 0}, Iron = {timer = nil, cooldown = 0},
 	Tech = {timer = nil, cooldown = 0}, Attack = {timer = nil, cooldown = 0, counter = 0}, Exploration = {timer = nil, cooldown = 0}, Auto_Join = {timer = nil, cooldown = 0, enabled = false, status = false}, StartAPP1 = {timer = nil, cooldown = 0},
 	StartAPP2 = {timer = nil, cooldown = 0}, City = {timer = nil, cooldown = 0}, Arena = {timer = nil, cooldown = 0, dir = "Arena/"}, Crystal_Laboratory = {timer = nil, cooldown = 0, status = nil}, War_Academy = {timer = nil, cooldown = 0, status = nil},
-	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
+        Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Dawn_Academy = {enabled = false}, Experts = {Agnes = {enabled = false, timer = nil, cooldown = 0, retryInterval = 0}}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
@@ -9258,10 +9309,12 @@ function Main_GUI(version)
 	addSeparator()
 	addTextView("          Events")
 	newRow()
-	addCheckBox("City_Events", "City Events", false)
-	addCheckBox("AM_Enabled", "Alliance Mobilization", false)
-	addCheckBox("Map_Options", "Map Options", false)
-	addSeparator()
+        addCheckBox("City_Events", "City Events", false)
+        addCheckBox("AM_Enabled", "Alliance Mobilization", false)
+        addCheckBox("Map_Options", "Map Options", false)
+        newRow()
+        addCheckBox("Experts_Options", "Experts", false)
+        addSeparator()
 	newRow()
 	addCheckBox("Barney_Enabled", "Use Alternate Character", false)
 	addSeparator()
@@ -13732,10 +13785,11 @@ function Search_Intel()
 	Main.Intel.status = false
 	Logger("Searching for Intel Button")
 	local Intel_Button = SearchImageNew("Intel Button.png", Lower_Right, 0.9, true)
-	if not(Intel_Button.name) then return 60 end
-	Logger("Intel Found and Opening")
-	PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
-	------ Checks for any completed intel ----------
+        if not(Intel_Button.name) then return 60 end
+        Logger("Intel Found and Opening")
+        PressRepeatNew(Intel_Button.xy, "Intel Cans.png", 1, 2, nil, Upper_Right, 0.9, nil, true)
+        expert_Agnes()
+        ------ Checks for any completed intel ----------
 	--if not(flameFangs) then end
 	--_G["intel_time" ..Intel_Count]
 	Logger("Checking for Completed Intel")
@@ -16850,12 +16904,14 @@ function Timer_Setup()
 		if (Bear_Now_later == "byEvents") then Main.Bear_Event.cooldown = Get_Time_Difference(nil, Bear_Start_Time) end			
 	end
 	
-	if (Auto_Intel) then 
-		Main.Intel.timer = Timer()
-		if (Intel_Now_later == "Later") then Main.Intel.cooldown = Get_Nearest_Time() end
-	end
-	
-	if (Auto_DailyRewards) then Main.DailyRewards.timer = Timer() end
+        if (Auto_Intel) then
+                Main.Intel.timer = Timer()
+                if (Intel_Now_later == "Later") then Main.Intel.cooldown = Get_Nearest_Time() end
+        end
+
+        if (Main.Experts.Agnes.enabled) then Main.Experts.Agnes.timer = Timer() end
+
+        if (Auto_DailyRewards) then Main.DailyRewards.timer = Timer() end
 	
 	if (Auto_Mail) then Main.Mail.timer = Timer() end
 	
@@ -17556,9 +17612,19 @@ function RunScript(version)
 	Pack_Sale_Dir = scandirNew("Pack Sale")
 	if (table.getn(Pack_Sale_Dir) > 0) then for i, pack in ipairs(Pack_Sale_Dir) do table.insert(Pack_Sale_List, "Pack Sale/"..pack) end end
 	User_ID = getUserID()
-	Main_GUI(version)
-	
-	if (Send_Report_GUI) then Report_Sender() end
+        Main_GUI(version)
+
+        if (Experts_Options) then Experts_GUI() end
+
+        Main.Dawn_Academy.enabled = Run_Dawn_Academy or false
+        Main.Experts.Agnes.enabled = Enable_Expert_Agnes or false
+        local agnesIgnoreMinutes = tonumber(Expert_Agnes_Ignore) or 15
+        Main.Experts.Agnes.ignoreMinutes = agnesIgnoreMinutes
+        Main.Experts.Agnes.retryInterval = agnesIgnoreMinutes * 60
+        Main.Experts.Agnes.cooldown = 0
+        if not(Main.Experts.Agnes.enabled) then Main.Experts.Agnes.timer = nil end
+
+        if (Send_Report_GUI) then Report_Sender() end
 	
 	if (Map_Options) then Maps_Options_GUI() end
 	
