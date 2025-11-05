@@ -1,0 +1,13 @@
+Triumph flow log sequence:
+1. Triumph: from World -> open Alliance / Triumph: already on Alliance / Triumph: unknown initial screen, skipping
+2. Triumph: tr.png not found in Lower_Half -> skip
+3. Triumph: anchor found (tr.png). Searching for Triumph.png to click.
+4. Triumph: Triumph.png found. Clicking. / Triumph: Triumph.png not found; clicking tr.png location as fallback.
+5. Triumph: looking for 4.png (Lower_Right).
+6. Triumph: 4.png found. Clicking. / Triumph: 4.png not found; proceeding anyway.
+7. Triumph: Tap Anywhere to exit
+8. Triumph: "Tap Anywhere" found. Clicking. / Triumph: "Tap Anywhere to exit" not found
+9. Triumph: looking for "back".
+10. Triumph: back found. Clicking back. / Triumph: back Btn not found; issuing a soft back via top-left tap.
+11. Triumph: ensuring Alliance screen for chest claim. / Triumph: Alliance image not found post-back.
+12. Triumph: done; staying in Alliance for chest claim.
