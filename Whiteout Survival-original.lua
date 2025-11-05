@@ -2957,51 +2957,106 @@ function Tech_Help()
 end
 
 function Triumph(initialScreen)
-	local TriumphDir = "Triumph/"
-	Current_Function = getCurrentFunctionName()
+        local TriumphDir = "Triumph/"
+        Current_Function = getCurrentFunctionName()
+        initialScreen = initialScreen or ""
 
-	if (initialScreen == "World") then
-		Logger("Checking Alliance Button")
-		Alliance_Btn = SearchImageNew("Alliance.png", Lower_Half, 0.8, true)
-		if not(Alliance_Btn.name) then 
-			Logger("Alliance button not found")
-			return 300
-		end
-	
-		Logger("Clicking Alliance")
-		PressRepeatNew(Alliance_Btn.xy, TriumphDir.. "Triumph.png", 1, 2)
-	elseif (initialScreen == "Alliance") then
-		Logger("Alliance Screen Found")
-		SingleImageWait(TriumphDir.. "Triumph.png", 999999)
-	else return 300 end
-	
-	local returnTime = 1800
-	local triumpStatus = multiHexColorFind(Location(388, 1417), {"#72B0DE", "#FF1E1F"}, 10) -- FF1E1F red dot found
-	if (triumpStatus == "#FF1E1F") then
-		Logger("Red Dot Found")
-		PressRepeatHexColor(Location(360, 1444), Location(680, 35), "#EEF0F2", 5, 4)
-		if not(isColorWithinThresholdHex(Location(439, 561), "#805712", 5)) then -- Claim Weekly Reward
-			PressRepeatHexColor(Location(439, 561), Location(350, 250), "#FFFFFF", 5, 4)  --Click Box until tap to continue
-			PressRepeatHexColor(Location(30, 400), Location(30, 400), {"#59A3DD", "#4D9EDC"}, 5, 1)  --Clicking Somewhere until Tap to continue is gone
-		end
-		
-		local dailyRedDot = multiHexColorFind(Location(689, 1043), {"#FFB54A", "#FF1E1F"}, 10) -- FF1E1F red dot found
-		if (dailyRedDot == "#FF1E1F") then
-			PressRepeatHexColor(Location(125, 1074), Location(20, 920), "#0E1C2E", 5, 4) --Click Box until tap to continue
-			PressRepeatHexColor(Location(30, 400), Location(30, 400), {"#59A3DD", "#4D9EDC"}, 5, 1) --Clicking Somewhere until Tap to continue is gone
-			returnTime = Get_Time_Difference()
-			Main.Triumph.status = false
-		end
-		PressRepeatNew(4, TriumphDir.. "Triumph.png", 1, 5)
-	else
-		Logger("Red Dot Not Found")
-	end
-	
-	if (initialScreen == "World") then
-		Go_Back("Triumph Completed")
-	end
-	
-	return returnTime
+        local SKIP_COOLDOWN = 300
+        local DONE_COOLDOWN = 1800
+
+        -- 1) If starting from World, open Alliance
+        if initialScreen == "World" then
+                Logger("Triumph: from World -> open Alliance")
+                local Alliance_Btn = SearchImageNew("Alliance.png", Lower_Half, 0.80, true)
+                if not (Alliance_Btn and Alliance_Btn.xy) then
+                        Logger("Triumph: Alliance button not found. Skip.")
+                        return SKIP_COOLDOWN
+                end
+                Press(Alliance_Btn.xy, 1)
+                wait(0.4)
+        elseif initialScreen == "Alliance" then
+                Logger("Triumph: already on Alliance")
+        else
+                Logger("Triumph: unknown initial screen, skipping")
+                return SKIP_COOLDOWN
+        end
+
+        -- 2) Detect anchor (tr.png) in Lower_Half; bail fast if missing
+        local tr = SearchImageNew(TriumphDir.."tr.png", Lower_Half, 0.80, true, false, 2)
+        if not (tr and tr.xy) then
+                Logger("Triumph: tr.png not found in Lower_Half -> skip")
+                return SKIP_COOLDOWN
+        end
+
+        -- 3) Click the real button (Triumph.png) if present, else fallback to tr.png
+        Logger("Triumph: anchor found (tr.png). Searching for Triumph.png to click.")
+        local triBtn = SearchImageNew(TriumphDir.."Triumph.png", Lower_Half, 0.80, true, false, 2)
+        if triBtn and triBtn.xy then
+                Logger("Triumph: Triumph.png found. Clicking.")
+                Press(triBtn.xy, 1)
+        else
+                Logger("Triumph: Triumph.png not found; clicking tr.png location as fallback.")
+                Press(tr.xy, 1)
+        end
+        wait(0.3)
+
+        -- 4) Click 4.png in Lower_Right (short wait, no infinite block)
+        Logger("Triumph: looking for 4.png (Lower_Right).")
+        local four = SearchImageNew(TriumphDir.."4.png", Lower_Right, 0.80, true, false, 3)
+        if four and four.xy then
+                Logger("Triumph: 4.png found. Clicking.")
+                Press(four.xy, 1)
+                wait(0.25)
+        else
+                Logger("Triumph: 4.png not found; proceeding anyway.")
+        end
+
+        -- 5) Click "Tap Anywhere to exit.png" (not in Triumph folder) in Lower_Half
+        Logger('Triumph: Tap Anywhere to exit')
+        local tapAny = SearchImageNew("Tap Anywhere.png", Lower_Half, 0.80, true, false, 3)
+        if tapAny and tapAny.xy then
+                Logger('Triumph: "Tap Anywhere" found. Clicking.')
+                Press(tapAny.xy, 1)
+                wait(0.25)
+        else
+                Logger('Triumph: "Tap Anywhere to exit" not found')
+                -- Fallback taps to clear overlays if the PNG isn't seen
+                Press(Location(360, 640), 1)
+                wait(0.1)
+                Press(Location(360, 1100), 1)
+                wait(0.1)
+                Press(Location(680, 60), 1)
+                wait(0.1)
+        end
+
+        -- 6) Click back using back.png (not in Triumph folder)
+        Logger('Triumph: looking for "back".')
+        local backBtn = SearchImageNew("back.png", Upper_Left, 0.85, true, false, 2)
+        if not (backBtn and backBtn.xy) then
+                backBtn = SearchImageNew("back.png", nil, 0.85, true, false, 2)  -- fallback to full screen
+        end
+        if backBtn and backBtn.xy then
+                Logger("Triumph: back found. Clicking back.")
+                Press(backBtn.xy, 1)
+                wait(0.3)
+        else
+                Logger("Triumph: back Btn not found; issuing a soft back via top-left tap.")
+                Press(Location(40, 60), 1)
+                wait(0.2)
+        end
+
+        -- 7) Ensure we are on Alliance (so chest claim can run next)
+        local Alliance_Btn2 = SearchImageNew("Alliance.png", Lower_Half, 0.80, true, false, 2)
+        if Alliance_Btn2 and Alliance_Btn2.xy then
+                Logger("Triumph: ensuring Alliance screen for chest claim.")
+                Press(Alliance_Btn2.xy, 1)
+                wait(0.3)
+        else
+                Logger("Triumph: Alliance image not found post-back.")
+        end
+
+        Logger("Triumph: done; staying in Alliance for chest claim.")
+        return DONE_COOLDOWN
 end
 function Alliance_Chests(Screen)
 	Current_Function = getCurrentFunctionName()
