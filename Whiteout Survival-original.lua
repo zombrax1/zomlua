@@ -2964,13 +2964,18 @@ function Triumph(initialScreen)
         local SKIP_COOLDOWN = 300
         local DONE_COOLDOWN = 1800
 
+        local function finish(cooldown)
+                Main.Triumph.status = false
+                return cooldown
+        end
+
         -- 1) If starting from World, open Alliance
         if initialScreen == "World" then
                 Logger("Triumph: from World -> open Alliance")
                 local Alliance_Btn = SearchImageNew("Alliance.png", Lower_Half, 0.80, true)
                 if not (Alliance_Btn and Alliance_Btn.xy) then
                         Logger("Triumph: Alliance button not found. Skip.")
-                        return SKIP_COOLDOWN
+                        return finish(SKIP_COOLDOWN)
                 end
                 Press(Alliance_Btn.xy, 1)
                 wait(0.4)
@@ -2978,14 +2983,14 @@ function Triumph(initialScreen)
                 Logger("Triumph: already on Alliance")
         else
                 Logger("Triumph: unknown initial screen, skipping")
-                return SKIP_COOLDOWN
+                return finish(SKIP_COOLDOWN)
         end
 
         -- 2) Detect anchor (tr.png) in Lower_Half; bail fast if missing
         local tr = SearchImageNew(TriumphDir.."tr.png", Lower_Half, 0.80, true, false, 2)
         if not (tr and tr.xy) then
                 Logger("Triumph: tr.png not found in Lower_Half -> skip")
-                return SKIP_COOLDOWN
+                return finish(SKIP_COOLDOWN)
         end
 
         -- 3) Click the real button (Triumph.png) if present, else fallback to tr.png
@@ -3056,7 +3061,7 @@ function Triumph(initialScreen)
         end
 
         Logger("Triumph: done; staying in Alliance for chest claim.")
-        return DONE_COOLDOWN
+        return finish(DONE_COOLDOWN)
 end
 function Alliance_Chests(Screen)
 	Current_Function = getCurrentFunctionName()
@@ -9361,13 +9366,14 @@ function StartBot(User_ID)
 		Main.Tech.timer:set()
 	end
 	
-	if (Auto_Triumph) and (Main.Triumph.timer:check() > Main.Triumph.cooldown) and ((ignorePersistence) or not(preferenceGetString("mainTriumph", "NA") == Current_Date)) then 
-		Main.Triumph.cooldown = Triumph("World")
-		if (Main.Triumph.cooldown >= Get_Time_Difference()) then 
-			preferencePutString("mainTriumph", Current_Date)
-		end
-		Main.Triumph.timer:set()
-	end
+        if (Auto_Triumph) and (Main.Triumph.timer:check() > Main.Triumph.cooldown) and ((ignorePersistence) or not(preferenceGetString("mainTriumph", "NA") == Current_Date)) then
+                Main.Triumph.status = true
+                Main.Triumph.cooldown = Triumph("World")
+                if (Main.Triumph.cooldown >= Get_Time_Difference()) then
+                        preferencePutString("mainTriumph", Current_Date)
+                end
+                Main.Triumph.timer:set()
+        end
 	
 	if (Auto_DailyRewards) and ((Main.DailyRewards.timer:check() > Main.DailyRewards.cooldown)) then -- add 2 minutes before reset also
 		Main.DailyRewards.cooldown = Daily_Rewards()
