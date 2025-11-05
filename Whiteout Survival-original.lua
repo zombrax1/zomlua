@@ -52,7 +52,7 @@ local maxInjured
 local Main = {AM = {timer = nil, cooldown = 0, Exclusive = {Region(30, 590, 315, 250), Region(350, 590, 315, 250)}, reqList = {}}, Meat = {timer = nil, cooldown = 0}, Wood = {timer = nil, cooldown = 0}, Coal = {timer = nil, cooldown = 0}, Iron = {timer = nil, cooldown = 0},
 	Tech = {timer = nil, cooldown = 0}, Attack = {timer = nil, cooldown = 0, counter = 0}, Exploration = {timer = nil, cooldown = 0}, Auto_Join = {timer = nil, cooldown = 0, enabled = false, status = false}, StartAPP1 = {timer = nil, cooldown = 0},
 	StartAPP2 = {timer = nil, cooldown = 0}, City = {timer = nil, cooldown = 0}, Arena = {timer = nil, cooldown = 0, dir = "Arena/"}, Crystal_Laboratory = {timer = nil, cooldown = 0, status = nil}, War_Academy = {timer = nil, cooldown = 0, status = nil},
-	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Experts = {timer = nil, cooldown = 0, enabled = false, request = false, dawnEnabled = false, dawnTimer = nil, dawnCooldown = 0, dawnNeedsImmediateCheck = false, dawnInterval = 0, enlistEnabled = false, enlistPending = false, enlistTimer = nil, enlistCooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false},
+	Infantry = {timer = nil, cooldown = 0}, Lancer = {timer = nil, cooldown = 0}, Marksman = {timer = nil, cooldown = 0}, Experts = {timer = nil, cooldown = 0, enabled = false, request = false, dawnEnabled = false, dawnTimer = nil, dawnCooldown = 0, dawnNeedsImmediateCheck = false, dawnInterval = 0, enlistEnabled = false, enlistPending = false, enlistTimer = nil, enlistCooldown = 0}, Claim_Rewards = {timer = nil, cooldown = 0}, Recruit_Heroes = {timer = nil, cooldown = 0}, Triumph = {timer = nil, cooldown = 0, status = false, contributed = false},
 	Maps_Option = {timer = nil, cooldown = 0}, My_Island = {timer = nil, cooldown = 0, screenTimer = nil, myIslandScreen = nil}, Chests = {timer = nil, cooldown = 0}, Nomadic_Merchant = {timer = nil, cooldown = 0}, 
 	Bear_Event = {timer = nil, cooldown = 0, status = nil, dir = "Bear Event/", bearStartTime = nil, bearPrepTime = nil, running = false, initialCheck = true, marchTime = 0}, The_Labyrinth = {timer = nil, cooldown = 0, status = nil},
 	Intel = {timer = nil, cooldown = 0, status = false}, Chief_Order_Event = {timer = nil, cooldown = 0, dir = "Chief Order/"}, Daily_Rewards = {timer = nil, cooldown = 0, dir = "Daily Rewards/"},
@@ -1320,7 +1320,7 @@ function Reset_Daily_Events()
 		Logger("Nomadic Merchant Timer and Cooldown refreshed")
 	end
 	
-	if (Auto_Triumph) then Main.Triumph.status = true end
+	if (Auto_Triumph) then Main.Triumph.status = Main.Triumph.contributed end
 	
 	Main.Attack.counter = 0
 	preferencePutNumber("attackLimitCounter", 0)
@@ -2930,6 +2930,7 @@ function Tech_Help()
 			SearchImageNew("Attempts 0.png", Lower_Half, 0.96, true, false, 5)
 			Logger("Stopping Long Press")
 			stopLongClick()
+			Main.Triumph.contributed = true
 		end
 	end
 	
@@ -2966,6 +2967,7 @@ function Triumph(initialScreen)
 
         local function finish(cooldown)
                 Main.Triumph.status = false
+                Main.Triumph.contributed = false
                 return cooldown
         end
 
@@ -9367,12 +9369,18 @@ function StartBot(User_ID)
 	end
 	
         if (Auto_Triumph) and (Main.Triumph.timer:check() > Main.Triumph.cooldown) and ((ignorePersistence) or not(preferenceGetString("mainTriumph", "NA") == Current_Date)) then
-                Main.Triumph.status = true
-                Main.Triumph.cooldown = Triumph("World")
-                if (Main.Triumph.cooldown >= Get_Time_Difference()) then
-                        preferencePutString("mainTriumph", Current_Date)
+                if (Main.Triumph.contributed) then
+                        Main.Triumph.status = true
+                        Main.Triumph.cooldown = Triumph("World")
+                        if (Main.Triumph.cooldown >= Get_Time_Difference()) then
+                                preferencePutString("mainTriumph", Current_Date)
+                        end
+                        Main.Triumph.timer:set()
+                else
+                        -- Skip Triumph until a contribution occurs; check again after a short delay
+                        Main.Triumph.cooldown = 60
+                        Main.Triumph.timer:set()
                 end
-                Main.Triumph.timer:set()
         end
 	
 	if (Auto_DailyRewards) and ((Main.DailyRewards.timer:check() > Main.DailyRewards.cooldown)) then -- add 2 minutes before reset also
