@@ -3772,32 +3772,60 @@ function SearchResources(rss_Type, Gather_Status)
 end
 
 function Exploration()
-	Current_Function = getCurrentFunctionName()
-	Logger("Checking Exploration")
-	local Exploration = SearchImageNew("Exploration.png", Lower_Most_Half, 0.9, true)
-	if not(Exploration.name) then 
-		Logger("Exploration Not found. Returning")
-		return 60
-	end
-	Logger("Clicking Exploration")
-	PressRepeatNew("Exploration.png", {"Claim Available.png", "Claim Available 2.png", "Claim Unavailable.png"}, 1, 2, Lower_Most_Half, nil, 0.9, true, true)
-	wait(2)
-	local Exploration_Status = SearchImageNew({"Claim Available.png", "Claim Available 2.png", "Claim Unavailable.png"}, Lower_Half, 0.9, true)
-	if (Exploration_Status.name == "Claim Available") then
-		Logger("Exploration Available")
-		local Claim_Available_2 = PressRepeatNew(Exploration_Status.xy, "Claim Available 2.png", 1, 2, nil, nil, 0.8, true, true)
-		Logger("Clicking Claim Available 2")
-		local Tap_Anywhere = PressRepeatNew(Claim_Available_2.xy, "Tap Anywhere.png", 1, 2, nil, nil, 0.8, true, true)
-		Logger("Clicking Tap Anywhere")
-		PressRepeatNew(Tap_Anywhere.xy, "Claim Unavailable.png", 1, 2, nil, Lower_Half, 0.8, true, true)
-	elseif (Exploration_Status.name == "Claim Available 2") then 
-		Logger("Exploration Available")
-		local Tap_Anywhere = PressRepeatNew(Exploration_Status.xy, "Tap Anywhere.png", 1, 2, nil, nil, 0.8, true, true)
-		Logger("Clicking Tap Anywhere")
-		PressRepeatNew(Tap_Anywhere.xy, "Claim Unavailable.png", 1, 2, nil, Lower_Half, 0.8, true, true)
-	end
-	Go_Back()
-	return 21600
+    Current_Function = getCurrentFunctionName()
+    Logger("Checking Exploration")
+
+    local SKIP_COOLDOWN = 600
+    local DONE_COOLDOWN = 21600
+    local SIM_MAIN = 0.88
+    local SIM_POP = 0.86
+
+    -- 1) Open Exploration
+    local expIcon = SearchImageNew("Exploration.png", Lower_Most_Half, SIM_MAIN, true)
+    if not (expIcon and expIcon.xy) then
+        Logger("Exploration not found. Returning")
+        return 60
+    end
+    Logger("Opening Exploration")
+    Press(expIcon.xy, 1)
+    wait(0.4)
+
+    -- 2) FIRST CLAIM (small chest button at Lower_Right)
+    Logger("Looking for small Claim (Lower_Right)")
+    local firstClaim = SearchImageNew({"Claim Available.png", "Claim.png"}, Lower_Right, SIM_MAIN, true, false, 3)
+    if not (firstClaim and firstClaim.xy) then
+        Logger("No small Claim found → back out")
+        Go_Back()
+        return SKIP_COOLDOWN
+    end
+    Logger("Small Claim found → clicking")
+    Press(firstClaim.xy, 1)
+    wait(0.25)
+
+    -- 3) POPUP CLAIM (big green Claim on popup, center/lower area)
+    Logger("Looking for popup Claim")
+    -- use your existing naming if available: "Claim Available 2.png"
+    local popupClaim = SearchImageNew({"Claim Available 2.png", "Claim.png"}, Lower_Half, SIM_POP, true, false, 4)
+    if popupClaim and popupClaim.xy then
+        Press(popupClaim.xy, 1)
+        wait(0.25)
+    else
+        Logger("Popup Claim not found; doing safe taps")
+        Press(Location(360, 640), 1); wait(0.12)
+        Press(Location(360, 1100), 1); wait(0.12)
+    end
+
+    -- 4) Optional: clear overlay if your flow shows a “Tap Anywhere”
+    local tapAny = SearchImageNew("Tap Anywhere.png", Lower_Half, 0.85, true, false, 2)
+    if tapAny and tapAny.xy then
+        Logger("Tap Anywhere detected → clicking")
+        Press(tapAny.xy, 1)
+        wait(0.2)
+    end
+
+    -- 5) Back to main
+    Go_Back()
+    return DONE_COOLDOWN
 end
 
 local AutoJoinX = nil
@@ -9962,3 +9990,4 @@ end
 --luckyPouch()
 RunScript("v20251103-B")
 scriptExit()
+
